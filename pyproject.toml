@@ -1,0 +1,11 @@
+[project]
+name = "agent-curator"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastmcp>=3.2.4",
+    "httpx>=0.28.1",
+    "prefab-ui>=0.19.1",
+]
