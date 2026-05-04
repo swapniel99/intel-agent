@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **AgentCurator** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles, deduplicates them, and renders a curated dashboard. See `PRD.md` for full spec.
 
-**Current state:** Pre-implementation. `main.py` is a stub; no frontend files exist yet.
+**Current state:** Backend (`main.py`) complete. Frontend (Chrome Extension) not yet implemented.
 
 ## Architecture
 
@@ -26,13 +26,13 @@ Runs on `http://localhost:8000`. FastMCP auto-exposes tools via SSE + HTTP POST.
 | `manage_local_library` | File CRUD | `action="check_duplicates"` or `"save_new"` on `saved_articles.json` (deduplicates by URL) |
 | `render_prefab_dashboard` | UI | Compiles articles → Prefab HTML/JSON string for injection |
 
-**CORS:** Must explicitly allow `chrome-extension://*` — FastMCP's underlying Starlette app rejects it by default.
+**CORS:** Configured via `mcp.run(middleware=[...])` using Starlette `CORSMiddleware`. `allow_origins=["*"]`, `allow_credentials=False`. MCP protocol headers (`mcp-protocol-version`, `mcp-session-id`) explicitly listed in `allow_headers`.
 
 **Fallback:** If `fetch_tech_news` fails, return cached `saved_articles.json` contents + status message. Never raise to the agent.
 
 ### Data
 - `saved_articles.json`: `[{ id, title, url, points, ai_summary, saved_at }]`
-- Prefab output: HTML string with Prefab CSS classes, injected via `innerHTML`
+- Prefab output: complete self-contained HTML page injected via `<iframe srcdoc>` (not `innerHTML` — scripts won't execute in innerHTML)
 
 ## Setup & Commands
 
@@ -40,9 +40,9 @@ Runs on `http://localhost:8000`. FastMCP auto-exposes tools via SSE + HTTP POST.
 # Backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .          # installs fastmcp, httpx, starlette (add to pyproject.toml first)
+pip install -e .          # installs fastmcp, httpx, prefab-ui, uvicorn
 
-python main.py            # starts server at http://localhost:8000
+python main.py            # starts server at http://localhost:8000 (streamable-http transport)
 
 # Tests
 pytest                    # unit tests: file CRUD, deduplication, API fallback mock
@@ -58,6 +58,8 @@ User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("chec
 
 ## Key Constraints
 
-- Gemini tool binding is **dynamic** (fetched at init from `/tools`), not hardcoded in JS
-- SSE streaming is automatic via FastMCP — no manual configuration
+- Gemini tool binding is **dynamic** — `sidepanel.js` POSTs `tools/list` to `http://localhost:8000/mcp` at init
+- MCP protocol endpoint: `POST http://localhost:8000/mcp` (FastMCP streamable-http transport)
+- Tool returns are uniform `dict` or `list[dict]` — no mixed `str|list` unions
+- `fetch_tech_news` fallback prepends `{"status": "..."}` sentinel to result list — never raises
 - Python version pinned to 3.14 (`.python-version`)
