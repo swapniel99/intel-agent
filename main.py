@@ -5,6 +5,8 @@ from pathlib import Path
 
 import httpx
 from fastmcp import FastMCP
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 from prefab_ui import PrefabApp
 from prefab_ui.components import (
     Badge,
@@ -23,6 +25,17 @@ LIBRARY_FILE = Path(__file__).parent / "saved_articles.json"
 
 mcp = FastMCP("AgentCurator")
 
+_cors_middleware = [
+    Middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["mcp-protocol-version", "mcp-session-id", "Authorization", "Content-Type"],
+        expose_headers=["mcp-session-id"],
+    )
+]
+
 
 def _load_library() -> list[dict]:
     if not LIBRARY_FILE.exists():
@@ -39,7 +52,8 @@ async def fetch_tech_news(query: str, limit: int = 10) -> list[dict]:
     """Fetch trending tech articles from Hacker News via Algolia.
 
     Returns a list of {title, url, points} objects.
-    Falls back to saved_articles.json if the network request fails.
+    Falls back to saved_articles.json if the network request fails, with a
+    sentinel {status} dict prepended so the agent can surface the message.
     """
     url = f"https://hn.algolia.com/api/v1/search?query={query}&hitsPerPage={limit}"
     try:
@@ -54,32 +68,34 @@ async def fetch_tech_news(query: str, limit: int = 10) -> list[dict]:
         ]
     except Exception:
         cached = _load_library()
+        status = {"status": "The internet source is currently unavailable. Displaying previously saved articles from your local storage."}
         if cached:
-            return [
+            articles = [
                 {"title": a["title"], "url": a["url"], "points": a.get("points", 0)}
                 for a in cached
             ]
-        return []
+            return [status] + articles
+        return [status]
 
 
 @mcp.tool()
-def manage_local_library(action: str, articles: list[dict] | None = None) -> str:
+def manage_local_library(action: str, articles: list[dict] | None = None) -> dict:
     """Read/write the local saved_articles.json library.
 
-    action='check_duplicates': returns only articles whose URLs are not already saved.
-    action='save_new': appends the provided articles (deduped by URL) and returns a status string.
+    action='check_duplicates': returns {status, articles} with novel articles not yet in library.
+    action='save_new': appends articles (deduped by URL), returns {status} string.
     """
     if action == "check_duplicates":
         if not articles:
-            return "[]"
+            return {"status": "No articles provided.", "articles": []}
         library = _load_library()
         saved_urls = {a["url"] for a in library}
         novel = [a for a in articles if a.get("url") not in saved_urls]
-        return json.dumps(novel)
+        return {"status": f"{len(novel)} novel articles found.", "articles": novel}
 
     if action == "save_new":
         if not articles:
-            return "0 articles provided. Nothing saved."
+            return {"status": "0 articles provided. Nothing saved."}
         library = _load_library()
         saved_urls = {a["url"] for a in library}
         new_articles = []
@@ -96,9 +112,9 @@ def manage_local_library(action: str, articles: list[dict] | None = None) -> str
                 saved_urls.add(a["url"])
         skipped = len(articles) - len(new_articles)
         _save_library(library + new_articles)
-        return f"{skipped} duplicates skipped. {len(new_articles)} new articles saved."
+        return {"status": f"{skipped} duplicates skipped. {len(new_articles)} new articles saved."}
 
-    return f"Unknown action '{action}'. Use 'check_duplicates' or 'save_new'."
+    return {"status": f"Unknown action '{action}'. Use 'check_duplicates' or 'save_new'."}
 
 
 @mcp.tool()
@@ -137,4 +153,4 @@ def render_prefab_dashboard(cards: list[dict]) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000, middleware=_cors_middleware)
