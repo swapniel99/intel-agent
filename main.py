@@ -252,7 +252,7 @@ def render_prefab_dashboard(
     """
     Compile curated articles and data into a professional dashboard.
 
-    Each card: {title, url, points, ai_summary: "MUST be a 1-sentence executive summary"}.
+    Each card: {title, url, points, source, ai_summary: "MUST be a 1-sentence executive summary"}.
     topic: full search subject (e.g. 'Local LLMs').
     theme_key: pick best match (ai, security, rust, python, devtools, infra, etc.).
 
@@ -262,7 +262,7 @@ def render_prefab_dashboard(
     - pie/bar/line/area: Use SIMPLE format (labels + values). 'area' is best for volume trends.
     - radar: Use MULTIVARIATE format (data + series).
     - radial: Use MULTIVARIATE format to show scores for a single subject.
-    
+
     DATA FORMATS (CRITICAL):
     - SIMPLE: chart={type, title, labels: ["A", "B"], values: [10, 20]} (Auto-converts to 'label' and 'value' keys)
     - MULTIVARIATE: chart={type, title, data: [{label: "Speed", val: 10}, {label: "Power", val: 20}], series: [{data_key: "val", label: "Metric"}]}
@@ -320,12 +320,29 @@ def render_prefab_dashboard(
             for c in cards:
                 with Card():
                     with CardHeader():
-                        with Row(align="center", gap=2):
-                            with CardTitle():
+                        with Row(align="start", justify="between", gap=4, css_class="flex-wrap"):
+                            with CardTitle(css_class="flex-1"):
                                 Markdown(f"[{c.get('title', 'Untitled')}]({c.get('url', '#')})")
-                            Badge(label=f"▲ {c.get('points', 0) or 0}", variant="info")
-                            if c.get("source"):
-                                Badge(label=c["source"].upper(), variant="secondary")
+                            with Row(align="center", gap=2, css_class="shrink-0 pt-1"):
+                                src = c.get("source")
+                                if src:
+                                    Badge(label=str(src).upper(), variant="outline")
+                                
+                                # Format points for readability
+                                p = c.get("points", 0) or 0
+                                if isinstance(p, (int, float)):
+                                    if p >= 1_000_000_000:
+                                        p_str = f"{p/1_000_000_000:.1f}B"
+                                    elif p >= 1_000_000:
+                                        p_str = f"{p/1_000_000:.1f}M"
+                                    elif p >= 1_000:
+                                        p_str = f"{p/1_000:.1f}K"
+                                    else:
+                                        p_str = str(p)
+                                else:
+                                    p_str = str(p)
+                                
+                                Badge(label=f"▲ {p_str}", variant="info")
                     with CardContent():
                         if c.get("ai_summary"):
                             Muted(c["ai_summary"])
@@ -338,7 +355,7 @@ def render_prefab_dashboard(
 async def dashboard(request: Request) -> HTMLResponse:
     """Serve last rendered Prefab dashboard HTML with theme support."""
     theme = request.query_params.get("theme", "dark")
-    
+
     if not _LAST_DASHBOARD_HTML:
         app = PrefabApp()
         if theme == "dark":
