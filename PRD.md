@@ -78,16 +78,20 @@ The backend will act as the "Hands," securely interacting with the OS and the in
 *   **Returns:** Cleaned array of article objects `[{title, url, points}]`.
 
 **Tool 2: `manage_local_library` (Local File CRUD)**
-*   **Description:** Handles Read, Append, and Delete operations on a local `saved_articles.json` file.
+*   **Description:** Handles Read, Search, Append, Update, and Delete operations on a local `saved_articles.json` file.
 *   **Logic:**
     *   *Action = "check_duplicates":* Reads local file, compares URLs, returns only novel articles.
-    *   *Action = "save_new":* Appends new articles to the JSON file.
-*   **Returns:** Status string for the Agent (e.g., `"2 duplicates skipped. 3 new articles saved."`).
+    *   *Action = "save_new":* Appends new articles with AI summaries to the JSON file.
+    *   *Action = "list_all":* Returns the entire collection.
+    *   *Action = "search":* Filters by keyword.
+    *   *Action = "update/delete":* Manages specific records by ID.
+*   **Returns:** Status string and/or article list for the Agent.
 
 **Tool 3: `render_prefab_dashboard` (UI Communication)**
 *   **Description:** Compiles the final curated data into a Prefab UI dashboard using `prefab-ui` Python components.
-*   **Parameters:** `cards` (array of curated articles with Gemini's summaries).
-*   **Returns:** A complete self-contained HTML page (Prefab renderer loaded from CDN) that the Chrome Extension renders in an `<iframe srcdoc>`.
+*   **Parameters:** `cards`, `topic`, `theme_key`, `display_title`, `chart` (optional).
+*   **Charts:** Supports Bar, Line, Area, Pie, Radar, and Radial charts with flexible data schemas.
+*   **Returns:** A status indicating the dashboard is ready for the extension to fetch.
 
 #### D. Backend Security & CORS
 *   The FastMCP server MUST implement **CORS (Cross-Origin Resource Sharing) middleware** (accessible via its underlying Starlette/FastAPI app configuration). Because the Chrome Extension makes requests from a `chrome-extension://<id>` origin, the local server will reject them by default. Configure the middleware to allow origins from Chrome extensions (e.g., `allow_origins=["*"]` or specifically `chrome-extension://*`) and allow all necessary methods/headers.

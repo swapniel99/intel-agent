@@ -8,11 +8,11 @@ AgentCurator bridges the gap between high-level AI reasoning and local system ca
 
 ## ✨ Key Features
 
-- **🌐 Hybrid Research:** Seamlessly combines niche community data from **Hacker News** with broad factual grounding via **Google Search**.
-- **📚 Local Memory:** Persistent JSON library (`saved_articles.json`) for article deduplication and historical research tracking.
-- **📊 Dynamic Dashboards:** Automatically generates rich UI dashboards using **Prefab UI** and **Frappe Charts** (Bar, Pie, Line, Radar, etc.).
+- **🌐 Hybrid Research:** Seamlessly combines niche community data from **Hacker News** with broad factual grounding via **Google Search** (Dynamic Grounding).
+- **📚 Local Memory:** Persistent JSON library (`saved_articles.json`) for article deduplication, full-text search, and historical research tracking.
+- **📊 Dynamic Dashboards:** Automatically generates rich UI dashboards using **Prefab UI** and **Frappe Charts** (Bar, Pie, Line, Area, Radar, Radial).
 - **🧩 MCP Native:** Built on the **Model Context Protocol (FastMCP)** for robust, standardized communication between the LLM and local tools.
-- **⚡ persistence:** Operates in a Chrome **Side Panel** (Manifest V3) for an uninterrupted, always-available research companion.
+- **⚡ Persistence:** Operates in a Chrome **Side Panel** (Manifest V3) for an uninterrupted, always-available research companion.
 
 ---
 
@@ -34,7 +34,7 @@ graph TD
         T3 --> Prefab[Prefab UI / Charts]
     end
 
-    Gemini -- Grounding --> Google[Google Search]
+    Gemini -- Dynamic Grounding --> Google[Google Search]
     Gemini -- Tool Call --> FastMCP
     FastMCP -- Result --> Extension
     Extension -- Render --> Dashboard{{Interactive Dashboard}}
@@ -45,18 +45,18 @@ graph TD
 ## 🚀 Getting Started
 
 ### 1. Backend Setup (MCP Server)
-The backend requires Python 3.14+ and `uv` (recommended) or `pip`.
+The backend requires Python 3.14+ and `uv` (recommended).
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/agent_curator.git
+git clone https://github.com/swapniel/agent_curator.git
 cd agent_curator
 
-# Install dependencies
-pip install -e .
+# Install dependencies using uv
+uv sync
 
-# Start the server
-python main.py
+# Start the server (uses the virtual environment automatically)
+./.venv/bin/python main.py
 ```
 *The server will run on `http://localhost:8000`. Keep this terminal open.*
 
@@ -74,9 +74,14 @@ python main.py
 | Tool | Capability | Source/Target |
 |---|---|---|
 | `fetch_tech_news` | Retrieves trending tech discussions and startup news. | Hacker News (Algolia) |
-| `manage_local_library` | Handles deduplication (`check_duplicates`) and permanent storage (`save_new`). | `saved_articles.json` |
-| `render_prefab_dashboard` | Compiles research into a rich HTML dashboard with charts and summaries. | Prefab UI + Frappe Charts |
-| **Google Search** | (Built-in) Provides real-time factual grounding for general queries. | Google Search Index |
+| `manage_local_library` | Full CRUD on research: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. | `saved_articles.json` |
+| `render_prefab_dashboard` | Compiles research into a rich HTML dashboard. Supports 6 chart types and auto-theme matching. | Prefab UI + Frappe Charts |
+| **Google Search** | (Native) Provides real-time factual grounding for general queries. | Google Search Index |
+
+### Dashboard Chart Support
+- **Comparison:** Bar, Line, Area
+- **Composition:** Pie, Radial
+- **Multivariate:** Radar
 
 ---
 
@@ -98,7 +103,7 @@ python main.py
 ## 🛠️ Tech Stack
 
 - **Backend:** Python 3.14, [FastMCP](https://github.com/jlowin/fastmcp), FastAPI, Uvicorn, Prefab-UI.
-- **Frontend:** JavaScript (ES6+), Manifest V3, Gemini SDK, Frappe Charts.
+- **Frontend:** JavaScript (ES6+), Manifest V3, Gemini SDK.
 - **Storage:** Local JSON filesystem.
 - **AI:** Google Gemini 1.5 Flash / 2.0 with Dynamic Grounding.
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AgentCurator** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles, deduplicates them, and renders a curated dashboard. See `PRD.md` for full spec.
+**AgentCurator** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles, deduplicates them, and renders a curated dashboard. It uses Gemini's Dynamic Grounding (Google Search) for factual verification and Hacker News for community trends.
 
 **Current state:** Backend (`main.py`) and frontend (`extension/`) both complete and functional.
 
@@ -18,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `background.js` opens side panel on icon click via `chrome.sidePanel.open`
 - `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
 - Gemini API key stored in `chrome.storage.local`, configured via options page
+- Model: `gemini-3.1-flash-lite-preview` (configured in `sidepanel.js`)
 - No package manager / build step — plain ES modules
 - Theme: dark/light mode toggle in side panel UI, applied to dashboard iframe via query parameter
 
