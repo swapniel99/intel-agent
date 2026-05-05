@@ -11,6 +11,28 @@ import httpx
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import HTMLResponse
+
+from prefab_ui import PrefabApp
+from prefab_ui.components.charts import (
+    AreaChart, BarChart, ChartSeries, LineChart, PieChart,
+    RadarChart, ScatterChart, Sparkline,
+)
+from prefab_ui.components.card import Card
+from prefab_ui.components.column import Column
+from prefab_ui.components.row import Row
+from prefab_ui.components.badge import Badge
+from prefab_ui.components.markdown import Markdown
+from prefab_ui.components.typography import H2, H3, Muted
+
+_CHART_REGISTRY = {
+    "bar": BarChart, "line": LineChart, "pie": PieChart,
+    "area": AreaChart, "scatter": ScatterChart, "radar": RadarChart,
+    "sparkline": Sparkline,
+}
+
+_LAST_DASHBOARD_HTML: str = ""
 
 logging.basicConfig(
     level=logging.INFO,
@@ -136,35 +158,64 @@ _DEFAULT_META = {"emoji": "📰", "hue": 220, "bg": "#0f1117", "card": "#1a2033"
 
 
 @mcp.tool()
-def render_prefab_dashboard(cards: list[dict], topic: str = "tech", theme_key: str = "default", display_title: str = "") -> dict:
-    """Compile curated articles into a dashboard spec for client rendering.
+def render_prefab_dashboard(
+    cards: list[dict],
+    topic: str = "tech",
+    theme_key: str = "default",
+    display_title: str = "",
+    chart: dict | None = None,
+) -> dict:
+    """Compile curated articles (and optional chart) into a Prefab dashboard.
 
-    Each card should have: title, url, points, ai_summary (optional).
-    topic: the full search subject string (e.g. 'Local LLMs', 'Rust async').
-    theme_key: pick the single best match for the topic from this exact list:
-        medical, security, rust, python, ai, web, cloud, data, game, crypto,
-        hardware, linux, science, devtools, infra, default
-    Examples: pytorch→ai, kubernetes→infra, solidity→crypto, medgemma→medical, nextjs→web,
-        risc-v→hardware, kernel→linux, crispr→science, neovim→devtools, postgres→infra, golang→devtools.
-    display_title: a short, well-capitalised heading for the dashboard (e.g. 'AI Investments', 'Local LLMs', 'Rust Async Runtime').
-        Capitalise acronyms correctly: AI, LLM, SQL, AWS, GCP, API, ML, UI, CSS, HTML, JS, TS, DB.
-    Returns {status, topic, theme, cards} for the client to render.
+    Each card: {title, url, points, ai_summary?}.
+    topic: full search subject (e.g. 'Local LLMs').
+    theme_key: pick best match from: medical, security, rust, python, ai, web,
+        cloud, data, game, crypto, hardware, linux, science, devtools, infra, default.
+        Examples: pytorch→ai, kubernetes→infra, solidity→crypto, medgemma→medical,
+        nextjs→web, risc-v→hardware, kernel→linux, crispr→science, neovim→devtools.
+    display_title: short heading (capitalise AI, LLM, SQL, AWS, GCP, API, ML, UI, CSS, HTML, JS, TS, DB).
+    chart (optional): {type, title, labels, values}. type ∈ bar/line/pie/area/scatter/radar/sparkline.
+    Returns {status} — client loads /dashboard iframe to display.
     """
-    logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', theme='{theme_key}', cards={len(cards)})")
-    return {
-        "status": "dashboard_ready",
-        "topic": display_title or topic,
-        "theme": _TOPIC_PALETTES.get(theme_key, _DEFAULT_META),
-        "cards": [
-            {
-                "title": c.get("title", "Untitled"),
-                "url": c.get("url", "#"),
-                "points": c.get("points", 0) or 0,
-                "ai_summary": c.get("ai_summary", ""),
-            }
-            for c in cards
-        ],
-    }
+    global _LAST_DASHBOARD_HTML
+    logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', theme='{theme_key}', cards={len(cards)}, chart={chart and chart.get('type')})")
+
+    meta = _TOPIC_PALETTES.get(theme_key, _DEFAULT_META)
+    heading = f"{meta['emoji']} {display_title or topic}"
+
+    app = PrefabApp()
+    with app:
+        with Column():
+            H2(heading)
+
+            if chart and chart.get("type") in _CHART_REGISTRY:
+                ChartCls = _CHART_REGISTRY[chart["type"]]
+                labels = chart.get("labels", [])
+                values = chart.get("values", [])
+                chart_title = chart.get("title", "")
+                data = [{"label": l, "value": v} for l, v in zip(labels, values)]
+                if chart_title:
+                    H3(chart_title)
+                if chart["type"] == "sparkline":
+                    ChartCls(data=values)
+                else:
+                    ChartCls(
+                        data=data,
+                        series=[ChartSeries(data_key="value", label=chart_title or "Value")],
+                    )
+
+            for c in cards:
+                with Card():
+                    with Column():
+                        with Row():
+                            H3(c.get("title", "Untitled"))
+                            Badge(label=f"▲ {c.get('points', 0) or 0}", variant="info")
+                        Markdown(f"[{c.get('url', '#')}]({c.get('url', '#')})")
+                        if c.get("ai_summary"):
+                            Muted(c["ai_summary"])
+
+    _LAST_DASHBOARD_HTML = app.html()
+    return {"status": "dashboard_ready", "topic": display_title or topic}
 
 
 # @mcp.tool()
@@ -190,24 +241,16 @@ def render_prefab_dashboard(cards: list[dict], topic: str = "tech", theme_key: s
 #         return [{"status": f"Search failed: {str(e)}"}]
 
 
-@mcp.tool()
-def render_analytics_chart(title: str, labels: list[str], values: list[int], chart_type: str = "bar") -> dict:
-    """Render a trend chart or graph for data visualization.
-
-    chart_type: 'bar', 'line', 'pie', or 'percentage'
-    labels: list of strings (e.g. ['Rust', 'Python', 'Go'])
-    values: list of integers (e.g. [85, 92, 78])
-    """
-    logger.info(f"Tool Call: render_analytics_chart(title='{title}', type='{chart_type}', labels={labels})")
-    return {
-        "status": "chart_ready",
-        "title": title,
-        "type": chart_type,
-        "data": {
-            "labels": labels,
-            "datasets": [{"name": title, "values": values}]
-        }
-    }
+@mcp.custom_route("/dashboard", methods=["GET"])
+async def dashboard(request: Request) -> HTMLResponse:
+    """Serve last rendered Prefab dashboard HTML for iframe loading."""
+    if not _LAST_DASHBOARD_HTML:
+        app = PrefabApp()
+        with app:
+            with Column():
+                Muted("No dashboard rendered yet. Run a prompt.")
+        return HTMLResponse(app.html())
+    return HTMLResponse(_LAST_DASHBOARD_HTML)
 
 
 if __name__ == "__main__":

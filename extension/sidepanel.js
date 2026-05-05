@@ -10,9 +10,9 @@ const $status = document.getElementById("status-bar");
 const $log = document.getElementById("log-section");
 const $runBtn = document.getElementById("run-btn");
 const $promptInput = document.getElementById("prompt-input");
-const $dashboardRoot = document.getElementById("prefab-root");
-const $chartRoot = document.getElementById("chart-root");
+const $dashboardFrame = document.getElementById("prefab-frame");
 const $emptyState = document.getElementById("empty-state");
+const DASHBOARD_URL = "http://localhost:8000/dashboard";
 const $settingsBtn = document.getElementById("settings-btn");
 const $themeBtn = document.getElementById("theme-btn");
 const $settingsPanel = document.getElementById("settings-panel");
@@ -127,10 +127,8 @@ async function runAgent(userPrompt) {
   setStatus("Running agent…");
   clearLog();
   clearGemini();
-  $chartRoot.style.display = "none";
-  $chartRoot.innerHTML = "";
-  $dashboardRoot.style.display = "none";
-  $dashboardRoot.innerHTML = "";
+  $dashboardFrame.style.display = "none";
+  $dashboardFrame.src = "about:blank";
   $emptyState.style.display = "none";
 
   const functionDeclarations = mcpToolsToFunctionDeclarations(mcpTools);
@@ -146,26 +144,23 @@ Current Date and Time: ${now}
 Pick tools based on the user's intent.
 
 Intent classification:
-- ARTICLE_CURATION: user wants a list/feed/digest of articles. 
+- ARTICLE_CURATION: user wants a list/feed/digest of articles.
   - Use fetch_tech_news for tech trends/community discussion.
   - Use Built-in Google Search for general news/product updates.
   → manage_local_library(check_duplicates) → manage_local_library(save_new) → render_prefab_dashboard
-- TREND_ANALYSIS: user asks about trends, comparisons, or data visualization.
-  - Use fetch_tech_news for community trends.
-  - Use Built-in Google Search for factual/market trends.
-  → render_analytics_chart
-- COMBINED: run full research pipeline + chart + dashboard.
+- TREND_ANALYSIS: user asks about trends/comparisons/visualization.
+  - Gather data via fetch_tech_news or Google Search.
+  → render_prefab_dashboard with chart={type, title, labels, values}
+- COMBINED: articles + chart in one render_prefab_dashboard call (pass cards AND chart).
 
 Rules:
-- MERGE results from both internet tools when used together before calling the library/dashboard tools.
-- Use the current date to filter out stale or irrelevant results unless the user specifically asks for historical data.
-- Only call render_prefab_dashboard if user wants articles displayed.
-- Only call render_analytics_chart if user wants a chart, graph, or trend visualization.
+- MERGE results from both internet tools when used together before calling library/dashboard.
+- Use current date to filter stale results unless user asks historical.
+- render_prefab_dashboard is the ONLY render tool. Pass cards (articles) and/or chart (visualization).
+- chart.type ∈ bar, line, pie, area, scatter, radar, sparkline. Pick best fit.
 - For render_prefab_dashboard: pass user's search subject verbatim as topic, pick best theme_key.
-- NEVER emit chart specs, JSON, or data arrays inline in your text response. If chart is needed, you MUST invoke render_analytics_chart tool with the data. Inline JSON output is forbidden.
-- NEVER emit dashboard HTML/markdown inline. Use render_prefab_dashboard tool.
-- Text responses are for short prose summaries only — no code blocks, no structured data.
-- Keep text responses to 2-3 sentences max. Brief commentary only. Data lives in the tool-rendered chart/dashboard, not your text.
+- NEVER emit chart specs, JSON, dashboard HTML, or data arrays inline. Use the tool.
+- Text responses: 2-3 sentences max prose only. No code blocks, no structured data.
 `;
 
   const MAX_TURNS = 12;
@@ -228,11 +223,7 @@ Rules:
       appendLog(`  ← ${JSON.stringify(toolResult).slice(0, 120)}`, "result");
 
       if (name === "render_prefab_dashboard" && toolResult?.status === "dashboard_ready") {
-        renderDashboard(toolResult);
-      }
-
-      if (name === "render_analytics_chart" && toolResult?.status === "chart_ready") {
-        renderChart(toolResult);
+        renderDashboard();
       }
 
       toolResponseParts.push({
@@ -296,47 +287,11 @@ function clearGemini() {
   $geminiSection.classList.remove("visible");
 }
 
-function renderDashboard({ topic, theme, cards }) {
+function renderDashboard() {
   $emptyState.style.display = "none";
-  $dashboardRoot.style.display = "block";
-  const { emoji, hue, bg, card: cardBg, fg, muted, border } = theme;
-  const accent = `oklch(0.72 0.20 ${hue})`;
-
-  const cardHtml = cards.length === 0
-    ? `<p style="color:${muted}">No articles to display.</p>`
-    : cards.map(c => `
-        <div style="background:${cardBg};border:1px solid ${border};border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-            <span style="font-weight:600;font-size:13px;line-height:1.4;color:${fg}">${escHtml(c.title)}</span>
-            <span style="flex-shrink:0;font-size:11px;padding:2px 7px;border-radius:999px;background:${accent}22;color:${accent};border:1px solid ${accent}55">▲ ${c.points}</span>
-          </div>
-          <a href="${escHtml(c.url)}" target="_blank" style="font-size:12px;color:${accent};word-break:break-all;text-decoration:underline">${escHtml(c.url)}</a>
-          ${c.ai_summary ? `<p style="font-size:12px;color:${muted};margin-top:2px">${escHtml(c.ai_summary)}</p>` : ""}
-        </div>`).join("");
-
-  $dashboardRoot.innerHTML = `
-    <div style="background:${bg};min-height:100%;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-      <h2 style="font-size:16px;font-weight:700;color:${fg};margin-bottom:14px">${emoji} ${escHtml(topic)}</h2>
-      <div style="display:flex;flex-direction:column;gap:10px">${cardHtml}</div>
-    </div>`;
-}
-
-function renderChart({ title, type, data }) {
-  $emptyState.style.display = "none";
-  $chartRoot.style.display = "block";
-  $chartRoot.innerHTML = ""; // Clear old chart
-  new frappe.Chart("#chart-root", {
-    title,
-    data,
-    type,
-    height: 180,
-    colors: ["#2563eb"],
-    axisOptions: { xAxisMode: "tick", xIsSeries: true },
-  });
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  $dashboardFrame.style.display = "block";
+  // Cache-bust so iframe re-fetches latest /dashboard HTML
+  $dashboardFrame.src = `${DASHBOARD_URL}?t=${Date.now()}`;
 }
 
 function setServerStatus(online) {
