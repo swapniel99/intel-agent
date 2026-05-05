@@ -21,10 +21,10 @@ IntelAgent bridges the gap between high-level AI reasoning and local system capa
 ```mermaid
 graph TD
     User([User Prompt]) --> Extension[Chrome Extension Side Panel]
-    Extension --> Gemini[Gemini 1.5 Flash / 2.0]
+    Extension --> Gemini
     Gemini -- Tool Discovery --> FastMCP[FastMCP Server :8000]
     FastMCP -- Tool Definition --> Gemini
-    
+
     subgraph "Local Tools (Python)"
         FastMCP --> T1[fetch_tech_news]
         FastMCP --> T2[manage_local_library]
@@ -105,7 +105,7 @@ uv sync
 - **Backend:** Python 3.14, [FastMCP](https://github.com/jlowin/fastmcp), FastAPI, Uvicorn, Prefab-UI.
 - **Frontend:** JavaScript (ES6+), Manifest V3, Gemini SDK.
 - **Storage:** Local JSON filesystem.
-- **AI:** Google Gemini 1.5 Flash / 2.0 with Dynamic Grounding.
+- **AI:** Google Gemini with Dynamic Grounding.
 
 ---
 
