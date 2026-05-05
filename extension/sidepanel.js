@@ -116,6 +116,10 @@ You MUST always complete the full pipeline using the available tools in this ord
 3. Call manage_local_library with action="save_new" to save novel articles
 4. Call render_prefab_dashboard with the articles to render the UI
 
+For render_prefab_dashboard, classify the user's topic into the single best-matching category from this list and pass that category name as the topic argument:
+medical, security, rust, python, ai, web, cloud, data, game, crypto
+If the topic fits none of these, pick the closest one by domain (e.g. "kubernetes" → cloud, "pytorch" → ai, "solidity" → crypto). Never pass the full prompt as topic.
+
 You MUST call render_prefab_dashboard as the final step — never skip it, never describe the dashboard in text instead of rendering it.`;
 
   const MAX_TURNS = 12;

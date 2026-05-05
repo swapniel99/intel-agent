@@ -125,29 +125,51 @@ async def dashboard_handler(request: Request) -> HTMLResponse:
     return HTMLResponse(_last_dashboard_html or "<h1>No dashboard yet</h1>")
 
 
-_TOPIC_THEMES: list[tuple[list[str], float, str]] = [
-    (["medical", "health", "bio", "medgemma", "pharma", "clinical"], 175.0, "🏥"),
-    (["security", "hack", "exploit", "vuln", "cyber", "malware", "cve"], 5.0, "🔐"),
-    (["rust", "cargo", "crate"], 22.0, "🦀"),
-    (["python", "django", "flask", "fastapi"], 210.0, "🐍"),
-    (["ai", "llm", "ml", "machine learning", "gpt", "gemini", "claude", "neural", "model"], 270.0, "🤖"),
-    (["web", "react", "vue", "angular", "frontend", "css", "html", "javascript", "typescript"], 195.0, "🌐"),
-    (["cloud", "aws", "gcp", "azure", "kubernetes", "docker", "devops", "infra"], 230.0, "☁️"),
-    (["data", "database", "sql", "postgres", "analytics", "etl"], 150.0, "🗄️"),
-    (["game", "unity", "unreal", "wasm"], 45.0, "🎮"),
-    (["crypto", "blockchain", "web3", "defi"], 55.0, "⛓️"),
+class _TopicPalette:
+    def __init__(self, keywords, hue, emoji, bg, card, fg, muted_fg, border):
+        self.keywords = keywords
+        self.hue = hue
+        self.emoji = emoji
+        self.bg = bg
+        self.card = card
+        self.fg = fg
+        self.muted_fg = muted_fg
+        self.border = border
+
+_TOPIC_THEMES: list[_TopicPalette] = [
+    _TopicPalette(["medical","health","bio","medgemma","pharma","clinical"],
+                  175.0,"🏥", bg="#071a18",card="#0d2820",fg="#c8f0eb",muted_fg="#6bbfb5",border="#1a4040"),
+    _TopicPalette(["security","hack","exploit","vuln","cyber","malware","cve"],
+                  5.0,  "🔐", bg="#1a0707",card="#280d0d",fg="#f0cdc8",muted_fg="#bf6b6b",border="#401a1a"),
+    _TopicPalette(["rust","cargo","crate"],
+                  22.0, "🦀", bg="#1a0e07",card="#28180d",fg="#f0d9c8",muted_fg="#bf956b",border="#40280d"),
+    _TopicPalette(["python","django","flask","fastapi"],
+                  210.0,"🐍", bg="#07101a",card="#0d1a28",fg="#c8daf0",muted_fg="#6b9abf",border="#1a2e40"),
+    _TopicPalette(["ai","llm","ml","machine learning","gpt","gemini","claude","neural","model"],
+                  270.0,"🤖", bg="#10071a",card="#180d28",fg="#dcc8f0",muted_fg="#9b6bbf",border="#2e1a40"),
+    _TopicPalette(["web","react","vue","angular","frontend","css","html","javascript","typescript"],
+                  195.0,"🌐", bg="#07141a",card="#0d2028",fg="#c8e8f0",muted_fg="#6baebf",border="#1a3040"),
+    _TopicPalette(["cloud","aws","gcp","azure","kubernetes","docker","devops","infra"],
+                  230.0,"☁️", bg="#07101a",card="#0d1828",fg="#c8d4f0",muted_fg="#6b80bf",border="#1a2440"),
+    _TopicPalette(["data","database","sql","postgres","analytics","etl"],
+                  150.0,"🗄️", bg="#071a0e",card="#0d2816",fg="#c8f0d4",muted_fg="#6bbf80",border="#1a402a"),
+    _TopicPalette(["game","unity","unreal","wasm"],
+                  45.0, "🎮", bg="#1a1007",card="#28180d",fg="#f0e0c8",muted_fg="#bfa06b",border="#40300d"),
+    _TopicPalette(["crypto","blockchain","web3","defi"],
+                  55.0, "⛓️", bg="#1a1407",card="#28200d",fg="#f0eac8",muted_fg="#bfae6b",border="#403810"),
 ]
-_DEFAULT_HUE = 220.0
-_DEFAULT_EMOJI = "📰"
+_DEFAULT = _TopicPalette(
+    keywords=[], hue=220.0, emoji="📰",
+    bg="#0f1117", card="#1a2033", fg="#e2e8f0", muted_fg="#9ca3af", border="#1e2535"
+)
 
 
-def _topic_meta(topic: str) -> tuple[float, str]:
-    """Return (hue, emoji) for a topic string."""
+def _topic_meta(topic: str) -> _TopicPalette:
     lower = topic.lower()
-    for keywords, hue, emoji in _TOPIC_THEMES:
-        if any(kw in lower for kw in keywords):
-            return hue, emoji
-    return _DEFAULT_HUE, _DEFAULT_EMOJI
+    for p in _TOPIC_THEMES:
+        if any(kw in lower for kw in p.keywords):
+            return p
+    return _DEFAULT
 
 
 def _badge_variant(points: int) -> str:
@@ -171,31 +193,31 @@ def render_prefab_dashboard(cards: list[dict], topic: str = "tech") -> str:
     """
     global _last_dashboard_html
 
-    hue, emoji = _topic_meta(topic)
-    primary = f"oklch(0.72 0.20 {hue});"
+    p = _topic_meta(topic)
+    primary = f"oklch(0.72 0.20 {p.hue});"
     dark_vars = (
-        f"--background: #0f1117;"
-        f"--foreground: #e2e8f0;"
-        f"--card: #1a2033;"
-        f"--card-foreground: #e2e8f0;"
-        f"--border: #1e2535;"
-        f"--muted: #1e2535;"
-        f"--muted-foreground: #9ca3af;"
-        f"--popover: #1a2033;"
-        f"--popover-foreground: #e2e8f0;"
+        f"--background: {p.bg};"
+        f"--foreground: {p.fg};"
+        f"--card: {p.card};"
+        f"--card-foreground: {p.fg};"
+        f"--border: {p.border};"
+        f"--muted: {p.card};"
+        f"--muted-foreground: {p.muted_fg};"
+        f"--popover: {p.card};"
+        f"--popover-foreground: {p.fg};"
         f"--primary: {primary}"
-        f"--primary-foreground: #0f1117;"
+        f"--primary-foreground: {p.bg};"
         f"--ring: {primary}"
-        f"--accent-hue: {hue};"
+        f"--accent-hue: {p.hue};"
     )
-    theme = Theme(accent=hue, mode="dark", light_css=dark_vars, dark_css=dark_vars)
-    heading_text = f"{emoji} {topic.title()} Dashboard"
-    dark_bootstrap = "html,body{background:#0f1117;color:#e2e8f0}"
+    theme = Theme(accent=p.hue, mode="dark", light_css=dark_vars, dark_css=dark_vars)
+    heading_text = f"{p.emoji} {topic.title()} Dashboard"
+    dark_bootstrap = f"html,body{{background:{p.bg};color:{p.fg}}}"
 
     if not cards:
         with PrefabApp(title=heading_text, theme=theme, stylesheets=[dark_bootstrap]) as app:
             Heading(heading_text)
-            Span("No articles to display.")
+            Span("No articles to display.", css_class="text-muted-foreground")
         _last_dashboard_html = app.html()
         return _last_dashboard_html
 
