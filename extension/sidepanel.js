@@ -32,11 +32,27 @@ async function mcpRequest(method, params = {}) {
   };
   if (mcpSessionId) headers["mcp-session-id"] = mcpSessionId;
 
-  const res = await fetch(MCP_URL, {
+  let res = await fetch(MCP_URL, {
     method: "POST",
     headers,
     body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params }),
   });
+
+  // Handle server restart / session loss (404 Not Found)
+  if (res.status === 404 && mcpSessionId) {
+    console.warn("MCP session not found (server likely restarted). Re-initializing...");
+    mcpSessionId = null;
+    await mcpInitialize(); // Re-initialize connection
+
+    // Retry the original request with new session
+    const newHeaders = { ...headers };
+    if (mcpSessionId) newHeaders["mcp-session-id"] = mcpSessionId;
+    res = await fetch(MCP_URL, {
+      method: "POST",
+      headers: newHeaders,
+      body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params }),
+    });
+  }
 
   if (res.headers.get("mcp-session-id")) {
     mcpSessionId = res.headers.get("mcp-session-id");
@@ -118,25 +134,28 @@ async function runAgent(userPrompt) {
     { role: "user", parts: [{ text: userPrompt }] },
   ];
 
-  const systemInstruction = `You are AgentCurator, an AI research assistant. Pick tools based on the user's intent.
+  const now = new Date().toLocaleString();
+  const systemInstruction = `You are AgentCurator, an AI research assistant. 
+Current Date and Time: ${now}
+
+Pick tools based on the user's intent.
 
 Intent classification:
 - ARTICLE_CURATION: user wants a list/feed/digest of articles. 
-  - Use fetch_tech_news for tech trends/community discussion.
-  - Use search_internet for general news/product updates.
+  - For simple queries: use the single most relevant tool (HN for trends, Search for facts).
+  - For complex/broad queries: USE BOTH fetch_tech_news AND search_internet to get a broader picture (Facts + Community Sentiment).
   → manage_local_library(check_duplicates) → manage_local_library(save_new) → render_prefab_dashboard
-- TREND_ANALYSIS: user asks about trends, comparisons, popularity, stats, "which is more", "compare X vs Y", "show me a chart/graph" with NO article-list intent.
-  - Use fetch_tech_news for community/sentiment trends.
-  - Use search_internet for factual/market trends.
-  → render_analytics_chart (skip dashboard, skip library save)
-- COMBINED: user wants articles AND a chart → run full article pipeline + render_analytics_chart + render_prefab_dashboard
+- TREND_ANALYSIS: user asks about trends, comparisons, or data visualization.
+  - USE BOTH tools if comparing "market share" (Search) vs "developer mindshare" (HN).
+  → render_analytics_chart
+- COMBINED: run full research pipeline + chart + dashboard.
 
 Rules:
+- MERGE results from both internet tools when used together before calling the library/dashboard tools.
+- Use the current date to filter out stale or irrelevant results unless the user specifically asks for historical data.
 - Only call render_prefab_dashboard if user wants articles displayed.
-- Only call render_analytics_chart if user wants a chart, graph, comparison, or trend visualization.
-- For pure trend/comparison queries with no article-list intent, call ONLY render_analytics_chart.
-- For pure article queries, call ONLY render_prefab_dashboard at the end.
-- For render_prefab_dashboard: pass user's search subject verbatim as topic, pick best theme_key from tool description.
+- Only call render_analytics_chart if user wants a chart, graph, or trend visualization.
+- For render_prefab_dashboard: pass user's search subject verbatim as topic, pick best theme_key.
 `;
 
   const MAX_TURNS = 12;
@@ -147,9 +166,22 @@ Rules:
       contents,
       config: {
         systemInstruction,
-        tools: functionDeclarations.length
-          ? [{ functionDeclarations }]
-          : undefined,
+        tools: [
+          { functionDeclarations: functionDeclarations.length ? functionDeclarations : [] },
+          { googleSearch: {} }
+        ],
+        toolConfig: {
+          functionCallingConfig: {
+            mode: "AUTO",
+          },
+          googleSearchRetrieval: {
+            dynamicRetrievalConfig: {
+              mode: "DYNAMIC",
+              dynamicThreshold: 0.3,
+            }
+          },
+          includeServerSideToolInvocations: true,
+        },
         generationConfig: { temperature: 0.2 },
       },
     });
