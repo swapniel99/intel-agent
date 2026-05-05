@@ -10,6 +10,7 @@ const $log = document.getElementById("log-section");
 const $runBtn = document.getElementById("run-btn");
 const $promptInput = document.getElementById("prompt-input");
 const $dashboardRoot = document.getElementById("prefab-root");
+const $chartRoot = document.getElementById("chart-root");
 const $emptyState = document.getElementById("empty-state");
 const $settingsBtn = document.getElementById("settings-btn");
 const $settingsPanel = document.getElementById("settings-panel");
@@ -105,6 +106,8 @@ function mcpToolsToFunctionDeclarations(tools) {
 async function runAgent(userPrompt) {
   setStatus("Running agent…");
   clearLog();
+  $chartRoot.style.display = "none";
+  $chartRoot.innerHTML = "";
 
   const functionDeclarations = mcpToolsToFunctionDeclarations(mcpTools);
 
@@ -114,14 +117,14 @@ async function runAgent(userPrompt) {
 
   const systemInstruction = `You are AgentCurator, an AI research assistant.
 You MUST always complete the full pipeline using the available tools in this order:
-1. Call fetch_tech_news to get articles
+1. Call fetch_tech_news OR search_internet to get trending articles/info
 2. Call manage_local_library with action="check_duplicates" to filter seen articles
 3. Call manage_local_library with action="save_new" to save novel articles
-4. Call render_prefab_dashboard with the articles to render the UI
+4. Call render_analytics_chart (Optional) ONLY if the user explicitly asked for a chart, graph, or comparison.
+5. Call render_prefab_dashboard AS THE FINAL STEP to show the articles.
 
-For render_prefab_dashboard: pass the user's search subject verbatim as topic, and pick the best theme_key from the tool's description.
-
-You MUST call render_prefab_dashboard as the final step — never skip it, never describe the dashboard in text instead of rendering it.`;
+CRITICAL: You must call BOTH render_analytics_chart AND render_prefab_dashboard if a chart was requested. Never skip the dashboard.
+For render_prefab_dashboard: pass the user's search subject verbatim as topic, and pick the best theme_key from the tool's description.`;
 
   const MAX_TURNS = 12;
 
@@ -171,6 +174,10 @@ You MUST call render_prefab_dashboard as the final step — never skip it, never
 
       if (name === "render_prefab_dashboard" && toolResult?.status === "dashboard_ready") {
         renderDashboard(toolResult);
+      }
+
+      if (name === "render_analytics_chart" && toolResult?.status === "chart_ready") {
+        renderChart(toolResult);
       }
 
       toolResponseParts.push({
@@ -228,6 +235,20 @@ function renderDashboard({ topic, theme, cards }) {
       <h2 style="font-size:16px;font-weight:700;color:${fg};margin-bottom:14px">${emoji} ${escHtml(topic)}</h2>
       <div style="display:flex;flex-direction:column;gap:10px">${cardHtml}</div>
     </div>`;
+}
+
+function renderChart({ title, type, data }) {
+  $emptyState.style.display = "none";
+  $chartRoot.style.display = "block";
+  $chartRoot.innerHTML = ""; // Clear old chart
+  new frappe.Chart("#chart-root", {
+    title,
+    data,
+    type,
+    height: 180,
+    colors: ["#2563eb"],
+    axisOptions: { xAxisMode: "tick", xIsSeries: true },
+  });
 }
 
 function escHtml(str) {

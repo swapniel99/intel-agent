@@ -1,5 +1,8 @@
 import json
 import uuid
+from ddgs import DDGS
+import urllib.parse
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -152,6 +155,47 @@ def render_prefab_dashboard(cards: list[dict], topic: str = "tech", theme_key: s
             }
             for c in cards
         ],
+    }
+
+
+@mcp.tool()
+async def search_internet(query: str, limit: int = 5) -> list[dict]:
+    """Search the broader internet for tech news and blogs via the ddgs library.
+    
+    Use this when hacker news doesn't have enough specific info.
+    Returns list of {title, url, points, snippet}.
+    """
+    try:
+        results = []
+        with DDGS() as ddgs:
+            for r in ddgs.text(query, max_results=limit):
+                results.append({
+                    "title": r.get("title", "No Title"),
+                    "url": r.get("href", "#"),
+                    "points": 0, 
+                    "snippet": r.get("body", "")
+                })
+        return results
+    except Exception as e:
+        return [{"status": f"Search failed: {str(e)}"}]
+
+
+@mcp.tool()
+def render_analytics_chart(title: str, labels: list[str], values: list[int], chart_type: str = "bar") -> dict:
+    """Render a trend chart or graph for data visualization.
+    
+    chart_type: 'bar', 'line', 'pie', or 'percentage'
+    labels: list of strings (e.g. ['Rust', 'Python', 'Go'])
+    values: list of integers (e.g. [85, 92, 78])
+    """
+    return {
+        "status": "chart_ready",
+        "title": title,
+        "type": chart_type,
+        "data": {
+            "labels": labels,
+            "datasets": [{"name": title, "values": values}]
+        }
     }
 
 
