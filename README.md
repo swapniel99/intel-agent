@@ -1,8 +1,8 @@
-# 🔍 ResearchAgent
+# 🔍 IntelAgent
 
 > **AI-Powered Research Assistant** — A production-ready orchestration of a Chrome Extension Side Panel and a local Python MCP backend.
 
-ResearchAgent bridges the gap between high-level AI reasoning and local system capabilities. It empowers users to fetch trending news from multiple sources, ground facts with Google Search, manage findings against a local JSON ledger, and visualize data through a beautiful, interactive Prefab dashboard.
+IntelAgent bridges the gap between high-level AI reasoning and local system capabilities. It empowers users to fetch trending news from multiple sources, ground facts with Google Search, manage findings against a local JSON ledger, and visualize data through a beautiful, interactive Prefab dashboard.
 
 ---
 
@@ -49,8 +49,8 @@ The backend requires Python 3.14+ and `uv` (recommended).
 
 ```bash
 # Clone the repo
-git clone https://github.com/swapniel/research-agent.git
-cd research-agent
+git clone https://github.com/swapniel/intel-agent.git
+cd intel-agent
 
 # Install dependencies using uv
 uv sync
@@ -64,7 +64,7 @@ uv sync
 1. Open Chrome and navigate to `chrome://extensions/`.
 2. Enable **Developer mode** (top right).
 3. Click **Load unpacked** and select the `extension` folder in this repository.
-4. Click the ResearchAgent icon in your toolbar to open the **Side Panel**.
+4. Click the IntelAgent icon in your toolbar to open the **Side Panel**.
 5. Click the gear icon (⚙️) to enter your **Gemini API Key**.
 
 ---

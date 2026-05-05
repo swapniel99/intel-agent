@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ResearchAgent: MCP Assistant",
+  "name": "IntelAgent: MCP Assistant",
   "version": "1.0",
   "permissions": ["sidePanel", "storage"],
   "host_permissions": [
@@ -15,7 +15,7 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "Open ResearchAgent"
+    "default_title": "Open IntelAgent"
   },
   "options_page": "options.html"
 }

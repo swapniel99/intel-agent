@@ -1,5 +1,5 @@
 # Product Requirements Document (PRD)
-## Project Name: ResearchAgent (AI Research Assistant)
+## Project Name: IntelAgent (AI Research Assistant)
 
 **Objective:** Build a decoupled AI system where a Chrome Extension Side Panel (Orchestrator/UI) connects via Server-Sent Events (SSE) to a local Python FastAPI backend (MCP Server) to fetch internet data, perform local file CRUD, and dynamically render a Prefab UI.
 
@@ -8,7 +8,7 @@
 ---
 
 ### 1. Executive Summary
-ResearchAgent is a personal AI research assistant designed to gather and synthesize information from multiple tech sources efficiently. It operates entirely within the user's browser via a Chrome Extension Side Panel, providing a persistent companion UI. It securely orchestrates tasks by delegating them to a local Python MCP server. The agent fetches trending articles, deduplicates them against a local JSON ledger, writes personalized summaries, and renders a dynamic, visually appealing reading dashboard using Prefab.
+IntelAgent is a personal AI research assistant designed to gather and synthesize information from multiple tech sources efficiently. It operates entirely within the user's browser via a Chrome Extension Side Panel, providing a persistent companion UI. It securely orchestrates tasks by delegating them to a local Python MCP server. The agent fetches trending articles, deduplicates them against a local JSON ledger, writes personalized summaries, and renders a dynamic, visually appealing reading dashboard using Prefab.
 
 ### 2. System Architecture
 This project utilizes a highly decoupled, production-ready pattern.
@@ -30,7 +30,7 @@ We will use a persistent Side Panel approach to ensure the agent is not interrup
     ```json
     {
       "manifest_version": 3,
-      "name": "AgentCurator: MCP Assistant",
+      "name": "IntelAgent: MCP Assistant",
       "version": "1.0",
       "permissions": ["sidePanel", "storage"],
       "host_permissions": [
@@ -44,7 +44,7 @@ We will use a persistent Side Panel approach to ensure the agent is not interrup
         "default_path": "sidepanel.html"
       },
       "action": {
-        "default_title": "Open AgentCurator"
+        "default_title": "Open IntelAgent"
       }
     }
     ```

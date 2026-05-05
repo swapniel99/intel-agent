@@ -1,5 +1,5 @@
 [project]
-name = "research-agent"
+name = "intel-agent"
 version = "0.1.0"
 description = "AI-powered research assistant with multi-source fetch and MCP orchestration"
 readme = "README.md"

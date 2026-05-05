@@ -92,7 +92,7 @@ async function parseSseResponse(res) {
 async function mcpInitialize() {
   await mcpRequest("initialize", {
     protocolVersion: "2024-11-05",
-    clientInfo: { name: "AgentCurator", version: "1.0" },
+    clientInfo: { name: "IntelAgent", version: "1.0" },
     capabilities: {},
   });
 }
@@ -139,7 +139,7 @@ async function runAgent(userPrompt) {
   ];
 
   const now = new Date().toLocaleString();
-  const systemInstruction = `You are ResearchAgent, an AI research assistant. 
+  const systemInstruction = `You are IntelAgent, an AI research assistant.
 Current Date and Time: ${now}
 
 Pick tools based on the user's intent.

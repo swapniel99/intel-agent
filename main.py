@@ -35,11 +35,11 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger("ResearchAgent")
+logger = logging.getLogger("IntelAgent")
 
 LIBRARY_FILE = Path(__file__).parent / "saved_articles.json"
 
-mcp = FastMCP("ResearchAgent")
+mcp = FastMCP("IntelAgent")
 
 _cors_middleware = [
     Middleware(
@@ -92,7 +92,7 @@ async def _fetch_dev(query: str, limit: int) -> list[dict]:
 async def _fetch_reddit(query: str, limit: int) -> list[dict]:
     """Fetch from Reddit."""
     url = f"https://www.reddit.com/r/all/search.json?q={query}&limit={limit}"
-    headers = {"User-Agent": "ResearchAgent/1.0"}
+    headers = {"User-Agent": "IntelAgent/1.0"}
     async with httpx.AsyncClient(timeout=10, headers=headers) as client:
         resp = await client.get(url)
         resp.raise_for_status()
