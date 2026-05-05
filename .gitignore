@@ -7,6 +7,7 @@ wheels/
 *.egg-info
 saved_articles.json
 .DS_Store
+*.bak
 
 # Virtual environments
 .venv/

@@ -10,7 +10,7 @@ IntelAgent bridges the gap between high-level AI reasoning and local system capa
 
 - **🌐 Multi-Source Research:** Seamlessly fetches from **Hacker News**, **Dev.to**, and **Reddit**, combined with broad factual grounding via **Google Search** (Dynamic Grounding).
 - **📚 Local Memory:** Persistent JSON library (`saved_articles.json`) for article deduplication, full-text search, and historical research tracking.
-- **📊 Dynamic Dashboards:** Automatically generates rich UI dashboards using **Prefab UI** and **Frappe Charts** (Bar, Pie, Line, Area, Radar, Radial).
+- **📊 Dynamic Dashboards:** Automatically generates rich UI dashboards using **Prefab UI** (Bar, Pie, Line, Area, Radar, Radial).
 - **🧩 MCP Native:** Built on the **Model Context Protocol (FastMCP)** for robust, standardized communication between the LLM and local tools.
 - **⚡ Persistence:** Operates in a Chrome **Side Panel** (Manifest V3) for an uninterrupted, always-available research companion.
 
@@ -76,7 +76,7 @@ uv sync
 |---|---|---|
 | `fetch_tech_news` | Retrieves trending tech discussions from multiple sources. | Hacker News, Dev.to, Reddit |
 | `manage_local_library` | Full CRUD on research: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. | `saved_articles.json` |
-| `render_prefab_dashboard` | Compiles research into a rich HTML dashboard. Supports 6 chart types and auto-theme matching. | Prefab UI + Frappe Charts |
+| `render_prefab_dashboard` | Compiles research into a rich HTML dashboard. Supports 6 chart types and auto-theme matching. | Prefab UI |
 | **Google Search** | (Native) Provides real-time factual grounding for general queries. | Google Search Index |
 
 ### Dashboard Chart Support
