@@ -14,25 +14,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Side Panel** (`extension/sidepanel.html` / `sidepanel.js`) acts as Orchestrator + primary UI (persistent across tabs)
 - **Options Page** (`extension/options.html` / `options.js`) for one-time Gemini API key setup
 - `sidepanel.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
-- Dashboard rendering: final tool result (`render_prefab_dashboard`) → HTML string injected into `<iframe src="http://localhost:8000/dashboard">` (not `srcdoc` — avoids CSP issues with Prefab's CDN chunks)
-- Analytics rendering: `render_analytics_chart` result injected into dedicated `<div id="chart-root">`
+- Dashboard rendering: final tool result (`render_prefab_dashboard`) → backend populates `_LAST_DASHBOARD_HTML` → side panel sets `iframe.src` to `http://localhost:8000/dashboard?theme=...`
 - `background.js` opens side panel on icon click via `chrome.sidePanel.open`
 - `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
 - Gemini API key stored in `chrome.storage.local`, configured via options page
 - No package manager / build step — plain ES modules
+- Theme: dark/light mode toggle in side panel UI, applied to dashboard iframe via query parameter
 
 ### Backend (Python 3.14 + FastMCP)
 Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves the last rendered prefab HTML for iframe loading.
 
-**4 MCP tools** (web search delegated to Gemini built-in `googleSearch`, not MCP):
+**3 MCP tools** (web search delegated to Gemini built-in `googleSearch`, not MCP):
 | Tool | Type | Details |
 |---|---|---|
 | `fetch_tech_news` | Internet | GET `hn.algolia.com/api/v1/search?query={q}&hitsPerPage={n}` → `[{title,url,points}]`. Falls back to `saved_articles.json` on failure. |
 | `manage_local_library` | File CRUD | `action="check_duplicates"` or `"save_new"` on `saved_articles.json` (deduplicates by URL) |
-| `render_prefab_dashboard` | UI | Compiles articles + topic/theme into dashboard spec → dict with status, topic, theme, cards |
-| `render_analytics_chart` | UI | Renders bar/line/pie/percentage charts → dict with title, type, data |
+| `render_prefab_dashboard` | UI | Compiles articles + topic/theme into dashboard spec (supports Bar, Line, Area, Pie, Radar, Radial charts) |
 
-`search_internet` (DuckDuckGo via `ddgs`) commented out at `main.py:170`. Replaced by Gemini native `googleSearch` tool wired in `sidepanel.js:179`. `ddgs`+`lxml` deps removed from `pyproject.toml`.
+`search_internet` (DuckDuckGo via `ddgs`) removed. Replaced by Gemini native `googleSearch` tool wired in `sidepanel.js:179`.
 
 **CORS:** Configured via `mcp.run(middleware=[...])` using Starlette `CORSMiddleware`. `allow_origins=["*"]`, `allow_credentials=False`. MCP protocol headers (`mcp-protocol-version`, `mcp-session-id`) explicitly listed in `allow_headers`.
 
@@ -40,7 +39,7 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 
 ### Data
 - `saved_articles.json`: `[{ id, title, url, points, ai_summary, saved_at }]`
-- Prefab output: complete self-contained HTML page injected via `<iframe srcdoc>` (not `innerHTML` — scripts won't execute in innerHTML)
+- Prefab output: complete self-contained HTML page served via `/dashboard` route with theme injection.
 
 ## Setup & Commands
 
@@ -63,9 +62,7 @@ pytest
 
 ## Demo Sequences
 
-**Basic flow:** User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("check_duplicates")` → `manage_local_library("save_new")` → `render_prefab_dashboard` → dashboard injected into Side Panel.
-
-**Extended flow:** User asks for trend analysis → Gemini calls native `googleSearch` → `render_analytics_chart` → chart rendered via `frappe-charts` into `<div id="chart-root">` alongside dashboard.
+**Basic flow:** User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("check_duplicates")` → `manage_local_library("save_new")` → `render_prefab_dashboard` → dashboard injected into Side Panel iframe.
 
 ## Key Constraints
 
@@ -74,17 +71,17 @@ pytest
 - Tool returns are uniform `dict` or `list[dict]` — no mixed `str|list` unions; exceptions return `[{status: "error message"}]`
 - Fallback pattern: `fetch_tech_news` returns `{status}` sentinel, never raises (keeps agent running)
 - MCP session auto-recovery: `sidepanel.js` retries on session loss, re-initializes `mcp-session-id` transparently
-- Theme: global dark/light mode toggle in side panel UI (commit 8869476), state in `chrome.storage.local`
+- Theme: global dark/light mode toggle in side panel UI, state in `chrome.storage.local`. Passed to dashboard via `?theme=dark|light`.
 - Theme matching: Gemini must select best-match theme from exact list (medical, security, rust, python, ai, web, cloud, data, game, crypto, hardware, linux, science, devtools, infra, default)
 - Python environment: **Mandatory** use of `./.venv/bin/python`. Always check for `.venv/` before running any command.
 - Python version pinned to 3.14 (`.python-version`)
-- Prefab dashboard rendering happens client-side (JS), not server-side HTML generation
+- Prefab dashboard rendering happens server-side, results cached in `_LAST_DASHBOARD_HTML`, served via `/dashboard`.
 
 ## Project Layout
 
 ```
 agent_curator/
-├── main.py                    # FastMCP server + 4 tools + /dashboard route
+├── main.py                    # FastMCP server + 3 tools + /dashboard route
 ├── test_mcp.py                # Async Streamable-HTTP client test
 ├── saved_articles.json        # Local article library (auto-created on first save)
 ├── pyproject.toml             # Python deps (fastmcp, uvicorn, httpx, prefab-ui)
@@ -93,14 +90,14 @@ agent_curator/
 ├── graphify-out/              # Knowledge graph
 └── extension/
     ├── manifest.json          # MV3 — permissions: sidePanel, storage; host: localhost:8000, googleapis.com, cdn.jsdelivr.net
-    ├── sidepanel.html         # Side panel UI (orchestrator + dashboard/chart rendering + theme toggle)
-    ├── sidepanel.js           # Gemini agentic loop + MCP proxy + Google Search + chart/dashboard injection
+    ├── sidepanel.html         # Side panel UI (orchestrator + dashboard iframe + theme toggle)
+    ├── sidepanel.js           # Gemini agentic loop + MCP proxy + Google Search + dashboard injection
     ├── background.js          # Service worker — opens side panel on icon click
     ├── options.html           # API key settings page
     ├── options.js             # Save/load Gemini API key to chrome.storage.local
     ├── genai.js               # Bundled @google/genai ES module
     └── lib/
-        └── frappe-charts.min.iife.js  # Chart rendering library for render_analytics_chart output
+        └── frappe-charts.min.iife.js  # Legacy (unused)
 ```
 
 ## Code Patterns
@@ -109,24 +106,22 @@ agent_curator/
 - `@mcp.tool()` decorator registers async/sync functions as MCP tools auto-exposed via `/mcp` endpoint
 - Tool docstrings become Gemini function descriptions (critical for agents to understand usage)
 - `_load_library()` / `_save_library()` abstract JSON read/write
-- Theme system: `_TOPIC_PALETTES` dict maps topic keywords (rust, python, ai, etc.) to color schemes; fallback to `_DEFAULT_META`
+- Theme system: `_TOPIC_PALETTES` dict maps topic keywords to emojis; dashboard theme (dark/light) handled via route injection.
 - Fallback pattern: catch exception → return cached data + `{status: "..."}` sentinel (never raise to agent)
 - Tool execution logging emitted to stdout for debugging multi-tool agent routing
 
 **Tool Return Schemas:**
 - `fetch_tech_news`: `[{title, url, points}, ...]` or `[{status}, ...]` on fallback
 - `manage_local_library`: `{status, articles?}` dict
-- `render_prefab_dashboard`: `{status, topic, theme, cards}` dict (client renders HTML)
-- `render_analytics_chart`: `{status, title, type, data: {labels, datasets}}` dict
+- `render_prefab_dashboard`: `{status, topic}` dict (backend caches HTML)
 
 **Frontend (extension/sidepanel.js):**
 - Init: `mcpInitialize()` → `loadMcpTools()` → convert to Gemini `functionDeclarations` schema
-- Agentic loop: `generateContent` → detect `functionCalls` → `callMcpTool()` → `functionResponse` → repeat up to 12 turns (configurable `MAX_TURNS`)
-- Dashboard rendering: `render_prefab_dashboard` result → extract HTML from `/dashboard` endpoint → set `$dashboardRoot.innerHTML` (or inject into iframe)
-- Chart rendering: `render_analytics_chart` result → `frappe-charts` (lib/frappe-charts.min.iife.js) draws into `<div id="chart-root">`
-- MCP session continuity: `mcp-session-id` header persisted; auto-recovery on session loss (re-init transparently)
+- Agentic loop: `generateContent` → detect `functionCalls` → `callMcpTool()` → `functionResponse` → repeat up to 12 turns
+- Dashboard rendering: `render_prefab_dashboard` result → reload iframe with `?theme=...&t=...`
+- MCP session continuity: `mcp-session-id` header persisted; auto-recovery on session loss
 - Gemini config: MCP `functionDeclarations` + native `googleSearch` tool registered together at `sidepanel.js:179`
-- Theme: dark/light toggle wired via `chrome.storage.local`, applied to dashboard iframe + chart container
+- Theme: dark/light toggle wired via `chrome.storage.local`, applied to extension UI and passed to dashboard iframe.
 - Error state: if server unavailable, display "Server Disconnected" message (not silent failure)
 
 ## Testing & Verification

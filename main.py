@@ -288,14 +288,29 @@ def render_prefab_dashboard(
 
 @mcp.custom_route("/dashboard", methods=["GET"])
 async def dashboard(request: Request) -> HTMLResponse:
-    """Serve last rendered Prefab dashboard HTML for iframe loading."""
+    """Serve last rendered Prefab dashboard HTML with theme support."""
+    theme = request.query_params.get("theme", "dark")
+    
     if not _LAST_DASHBOARD_HTML:
         app = PrefabApp()
+        if theme == "dark":
+            app.css_class = "dark"
         with app:
             with Column():
                 Muted("No dashboard rendered yet. Run a prompt.")
-        return HTMLResponse(app.html())
-    return HTMLResponse(_LAST_DASHBOARD_HTML)
+        html = app.html()
+    else:
+        html = _LAST_DASHBOARD_HTML
+
+    # Inject dark class if requested
+    if theme == "dark":
+        # Prefab renderer uses .dark on <html> or <body> for dark mode
+        html = html.replace('<html lang="en">', '<html lang="en" class="dark">')
+        # Also ensure the body has a dark background if the renderer doesn't set it
+        dark_style = '<style>html.dark, html.dark body { background: #161b26 !important; color: #c8cfdb !important; }</style>'
+        html = html.replace('</head>', f'{dark_style}</head>')
+
+    return HTMLResponse(html)
 
 
 if __name__ == "__main__":

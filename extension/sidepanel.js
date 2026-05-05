@@ -297,8 +297,9 @@ function clearGemini() {
 function renderDashboard() {
   $emptyState.style.display = "none";
   $dashboardFrame.style.display = "block";
+  const theme = document.documentElement.getAttribute("data-theme") || "dark";
   // Cache-bust so iframe re-fetches latest /dashboard HTML
-  $dashboardFrame.src = `${DASHBOARD_URL}?t=${Date.now()}`;
+  $dashboardFrame.src = `${DASHBOARD_URL}?theme=${theme}&t=${Date.now()}`;
 }
 
 function setServerStatus(online) {
@@ -381,6 +382,9 @@ $themeBtn.addEventListener("click", () => {
   const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
   applyTheme(next);
   chrome.storage.local.set({ [THEME_STORAGE]: next });
+  if ($dashboardFrame.style.display !== "none") {
+    renderDashboard();
+  }
 });
 
 $saveSettingsBtn.addEventListener("click", () => {
