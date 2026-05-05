@@ -1,3 +1,4 @@
 # .graphifyignore
 .venv/
 graphify-out/
+saved_articles.json
