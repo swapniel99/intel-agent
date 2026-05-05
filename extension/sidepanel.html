@@ -215,21 +215,6 @@
     #status-bar.error { color: var(--err); }
     #status-bar.success { color: var(--ok); }
 
-    #log-section {
-      padding: 8px 16px;
-      font-size: 11px;
-      color: var(--text-faint);
-      font-family: "SF Mono", "Fira Code", monospace;
-      max-height: 120px;
-      overflow-y: auto;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .log-entry { margin-bottom: 2px; }
-    .log-entry.tool { color: var(--tool); }
-    .log-entry.result { color: var(--ok); }
-    .log-entry.warn { color: var(--warn); }
-
     #gemini-section {
       padding: 10px 16px;
       font-size: 12px;
@@ -342,8 +327,6 @@
     </div>
 
     <div id="status-bar">Checking server…</div>
-
-    <div id="log-section"></div>
 
     <div id="gemini-section">
       <div class="label">Gemini</div>

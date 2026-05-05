@@ -8,7 +8,6 @@ const THEME_STORAGE = "theme";
 
 const $dot = document.getElementById("server-dot");
 const $status = document.getElementById("status-bar");
-const $log = document.getElementById("log-section");
 const $runBtn = document.getElementById("run-btn");
 const $promptInput = document.getElementById("prompt-input");
 const $dashboardFrame = document.getElementById("prefab-frame");
@@ -128,7 +127,6 @@ function mcpToolsToFunctionDeclarations(tools) {
 
 async function runAgent(userPrompt) {
   setStatus("Running agent…");
-  clearLog();
   clearGemini();
   $dashboardFrame.style.display = "none";
   $dashboardFrame.src = "about:blank";
@@ -217,17 +215,13 @@ Rules (CRITICAL):
 
     for (const call of toolCalls) {
       const { name, args } = call;
-      appendLog(`→ tool: ${name}`, "tool");
 
       let toolResult;
       try {
         toolResult = await callMcpTool(name, args);
       } catch (err) {
         toolResult = { error: err.message };
-        appendLog(`  error: ${err.message}`, "warn");
       }
-
-      appendLog(`  ← ${JSON.stringify(toolResult).slice(0, 120)}`, "result");
 
       if (name === "render_prefab_dashboard" && toolResult?.status === "dashboard_ready") {
         renderDashboard();
@@ -252,18 +246,6 @@ Rules (CRITICAL):
 function setStatus(msg, type = "") {
   $status.textContent = msg;
   $status.className = type;
-}
-
-function appendLog(msg, type = "") {
-  const el = document.createElement("div");
-  el.className = `log-entry ${type}`;
-  el.textContent = msg;
-  $log.appendChild(el);
-  $log.scrollTop = $log.scrollHeight;
-}
-
-function clearLog() {
-  $log.innerHTML = "";
 }
 
 function renderMarkdown(src) {
@@ -319,7 +301,6 @@ async function checkServer() {
     await mcpInitialize();
     mcpTools = await loadMcpTools();
     setServerStatus(true);
-    appendLog(`Loaded ${mcpTools.length} tools: ${mcpTools.map(t => t.name).join(", ")}`);
   } catch (_) {
     setServerStatus(false);
   }
@@ -352,7 +333,6 @@ function loadSettings() {
 async function resetConnection() {
   mcpSessionId = null;
   setStatus("Resetting connection…");
-  clearLog();
   clearGemini();
   $dashboardFrame.style.display = "none";
   $emptyState.style.display = "flex";
@@ -423,7 +403,6 @@ $runBtn.addEventListener("click", async () => {
     await runAgent(prompt);
   } catch (err) {
     setStatus(`Error: ${err.message}`, "error");
-    appendLog(`Error: ${err.message}`, "warn");
   } finally {
     $runBtn.disabled = false;
   }
