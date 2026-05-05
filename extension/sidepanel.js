@@ -108,6 +108,9 @@ async function runAgent(userPrompt) {
   clearLog();
   $chartRoot.style.display = "none";
   $chartRoot.innerHTML = "";
+  $dashboardRoot.style.display = "none";
+  $dashboardRoot.innerHTML = "";
+  $emptyState.style.display = "none";
 
   const functionDeclarations = mcpToolsToFunctionDeclarations(mcpTools);
 
@@ -115,16 +118,26 @@ async function runAgent(userPrompt) {
     { role: "user", parts: [{ text: userPrompt }] },
   ];
 
-  const systemInstruction = `You are AgentCurator, an AI research assistant.
-You MUST always complete the full pipeline using the available tools in this order:
-1. Call fetch_tech_news OR search_internet to get trending articles/info
-2. Call manage_local_library with action="check_duplicates" to filter seen articles
-3. Call manage_local_library with action="save_new" to save novel articles
-4. Call render_analytics_chart (Optional) ONLY if the user explicitly asked for a chart, graph, or comparison.
-5. Call render_prefab_dashboard AS THE FINAL STEP to show the articles.
+  const systemInstruction = `You are AgentCurator, an AI research assistant. Pick tools based on the user's intent.
 
-CRITICAL: You must call BOTH render_analytics_chart AND render_prefab_dashboard if a chart was requested. Never skip the dashboard.
-For render_prefab_dashboard: pass the user's search subject verbatim as topic, and pick the best theme_key from the tool's description.`;
+Intent classification:
+- ARTICLE_CURATION: user wants a list/feed/digest of articles. 
+  - Use fetch_tech_news for tech trends/community discussion.
+  - Use search_internet for general news/product updates.
+  → manage_local_library(check_duplicates) → manage_local_library(save_new) → render_prefab_dashboard
+- TREND_ANALYSIS: user asks about trends, comparisons, popularity, stats, "which is more", "compare X vs Y", "show me a chart/graph" with NO article-list intent.
+  - Use fetch_tech_news for community/sentiment trends.
+  - Use search_internet for factual/market trends.
+  → render_analytics_chart (skip dashboard, skip library save)
+- COMBINED: user wants articles AND a chart → run full article pipeline + render_analytics_chart + render_prefab_dashboard
+
+Rules:
+- Only call render_prefab_dashboard if user wants articles displayed.
+- Only call render_analytics_chart if user wants a chart, graph, comparison, or trend visualization.
+- For pure trend/comparison queries with no article-list intent, call ONLY render_analytics_chart.
+- For pure article queries, call ONLY render_prefab_dashboard at the end.
+- For render_prefab_dashboard: pass user's search subject verbatim as topic, pick best theme_key from tool description.
+`;
 
   const MAX_TURNS = 12;
 
@@ -215,6 +228,7 @@ function clearLog() {
 
 function renderDashboard({ topic, theme, cards }) {
   $emptyState.style.display = "none";
+  $dashboardRoot.style.display = "block";
   const { emoji, hue, bg, card: cardBg, fg, muted, border } = theme;
   const accent = `oklch(0.72 0.20 ${hue})`;
 

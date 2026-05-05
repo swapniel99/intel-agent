@@ -1,5 +1,6 @@
 import json
 import uuid
+import logging
 from ddgs import DDGS
 import urllib.parse
 import re
@@ -10,6 +11,12 @@ import httpx
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("AgentCurator")
 
 LIBRARY_FILE = Path(__file__).parent / "saved_articles.json"
 
@@ -39,12 +46,12 @@ def _save_library(articles: list[dict]) -> None:
 
 @mcp.tool()
 async def fetch_tech_news(query: str, limit: int = 10) -> list[dict]:
-    """Fetch trending tech articles from Hacker News via Algolia.
-
-    Returns a list of {title, url, points} objects.
-    Falls back to saved_articles.json if the network request fails, with a
-    sentinel {status} dict prepended so the agent can surface the message.
+    """Primary tool for DEVELOPER TRENDS and COMMUNITY DISCUSSION.
+    Use this for: "What's trending in tech?", "What do developers think about X?", 
+    "Latest startup news", or "niche engineering topics".
+    Source: Hacker News (Algolia).
     """
+    logger.info(f"Tool Call: fetch_tech_news(query='{query}', limit={limit})")
     url = f"https://hn.algolia.com/api/v1/search?query={query}&hitsPerPage={limit}"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -75,6 +82,7 @@ def manage_local_library(action: str, articles: list[dict] | None = None) -> dic
     action='check_duplicates': returns {status, articles} with novel articles not yet in library.
     action='save_new': appends articles (deduped by URL), returns {status} string.
     """
+    logger.info(f"Tool Call: manage_local_library(action='{action}', article_count={len(articles) if articles else 0})")
     if action == "check_duplicates":
         if not articles:
             return {"status": "No articles provided.", "articles": []}
@@ -142,6 +150,7 @@ def render_prefab_dashboard(cards: list[dict], topic: str = "tech", theme_key: s
         Capitalise acronyms correctly: AI, LLM, SQL, AWS, GCP, API, ML, UI, CSS, HTML, JS, TS, DB.
     Returns {status, topic, theme, cards} for the client to render.
     """
+    logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', theme='{theme_key}', cards={len(cards)})")
     return {
         "status": "dashboard_ready",
         "topic": display_title or topic,
@@ -160,11 +169,12 @@ def render_prefab_dashboard(cards: list[dict], topic: str = "tech", theme_key: s
 
 @mcp.tool()
 async def search_internet(query: str, limit: int = 5) -> list[dict]:
-    """Search the broader internet for tech news and blogs via the ddgs library.
-    
-    Use this when hacker news doesn't have enough specific info.
-    Returns list of {title, url, points, snippet}.
+    """Primary tool for GENERAL NEWS, FACTUAL INFO, and PRODUCT UPDATES.
+    Use this for: "Is X released yet?", "Latest news about company Y", 
+    "Product features/specs", or broad tech news not specific to developers.
+    Source: DuckDuckGo.
     """
+    logger.info(f"Tool Call: search_internet(query='{query}', limit={limit})")
     try:
         results = []
         with DDGS() as ddgs:
@@ -172,7 +182,7 @@ async def search_internet(query: str, limit: int = 5) -> list[dict]:
                 results.append({
                     "title": r.get("title", "No Title"),
                     "url": r.get("href", "#"),
-                    "points": 0, 
+                    "points": 0,
                     "snippet": r.get("body", "")
                 })
         return results
@@ -183,11 +193,12 @@ async def search_internet(query: str, limit: int = 5) -> list[dict]:
 @mcp.tool()
 def render_analytics_chart(title: str, labels: list[str], values: list[int], chart_type: str = "bar") -> dict:
     """Render a trend chart or graph for data visualization.
-    
+
     chart_type: 'bar', 'line', 'pie', or 'percentage'
     labels: list of strings (e.g. ['Rust', 'Python', 'Go'])
     values: list of integers (e.g. [85, 92, 78])
     """
+    logger.info(f"Tool Call: render_analytics_chart(title='{title}', type='{chart_type}', labels={labels})")
     return {
         "status": "chart_ready",
         "title": title,

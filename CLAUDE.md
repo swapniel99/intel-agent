@@ -11,22 +11,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Architecture
 
 ### Frontend (Chrome Extension — Manifest V3)
-- Persistent **Side Panel** (`extension/sidepanel.html` / `sidepanel.js`) acts as both Orchestrator and UI
-- `sidepanel.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs a `MAX_TURNS=12` agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`, renders the final HTML via `<iframe src="http://localhost:8000/dashboard">` (not `srcdoc` — avoids CSP issues with Prefab's CDN module chunks)
-- `background.js` opens the side panel on icon click via `chrome.sidePanel.open`
-- `genai.js` is a bundled copy of `@google/genai` SDK (no build step needed — loaded as ES module)
-- Gemini API key stored in `chrome.storage.local`, entered once in the side panel UI
-- No package manager / build step — plain ES modules with bundled `genai.js`
+- **Side Panel** (`extension/sidepanel.html` / `sidepanel.js`) acts as Orchestrator + primary UI (persistent across tabs)
+- **Options Page** (`extension/options.html` / `options.js`) for one-time Gemini API key setup
+- `sidepanel.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
+- Dashboard rendering: final tool result (`render_prefab_dashboard`) → HTML string injected into `<iframe src="http://localhost:8000/dashboard">` (not `srcdoc` — avoids CSP issues with Prefab's CDN chunks)
+- Analytics rendering: `render_analytics_chart` result injected into dedicated `<div id="chart-root">` 
+- `background.js` opens side panel on icon click via `chrome.sidePanel.open`
+- `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
+- Gemini API key stored in `chrome.storage.local`, configured via options page
+- No package manager / build step — plain ES modules
 
 ### Backend (Python 3.14 + FastMCP)
 Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves the last rendered prefab HTML for iframe loading.
 
-**3 tools (all required):**
+**5 tools:**
 | Tool | Type | Details |
 |---|---|---|
-| `fetch_tech_news` | Internet | GET `hn.algolia.com/api/v1/search?query={q}&hitsPerPage={n}` → `[{title,url,points}]` |
+| `fetch_tech_news` | Internet | GET `hn.algolia.com/api/v1/search?query={q}&hitsPerPage={n}` → `[{title,url,points}]`. Falls back to `saved_articles.json` on failure. |
+| `search_internet` | Internet | DuckDuckGo search via `ddgs` library → `[{title,url,snippet}]`. Use when HN insufficient. |
 | `manage_local_library` | File CRUD | `action="check_duplicates"` or `"save_new"` on `saved_articles.json` (deduplicates by URL) |
-| `render_prefab_dashboard` | UI | Compiles articles → Prefab HTML/JSON string for injection |
+| `render_prefab_dashboard` | UI | Compiles articles + topic/theme into dashboard spec → dict with status, topic, theme, cards |
+| `render_analytics_chart` | UI | Renders bar/line/pie/percentage charts → dict with title, type, data |
 
 **CORS:** Configured via `mcp.run(middleware=[...])` using Starlette `CORSMiddleware`. `allow_origins=["*"]`, `allow_credentials=False`. MCP protocol headers (`mcp-protocol-version`, `mcp-session-id`) explicitly listed in `allow_headers`.
 
@@ -55,55 +60,67 @@ pytest
 # Load unpacked extension from chrome://extensions/ → "Load unpacked" → select extension/
 ```
 
-## Demo Sequence (must be demonstrable)
+## Demo Sequences
 
-User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("check_duplicates")` → `manage_local_library("save_new")` → `render_prefab_dashboard` → Prefab UI injected in Side Panel.
+**Basic flow:** User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("check_duplicates")` → `manage_local_library("save_new")` → `render_prefab_dashboard` → dashboard injected into Side Panel.
+
+**Extended flow:** User asks for trend analysis → Gemini chains: `search_internet` → `render_analytics_chart` → chart injected into `<div id="chart-root">` alongside dashboard.
 
 ## Key Constraints
 
-- Gemini tool binding is **dynamic** — `sidepanel.js` POSTs `tools/list` to `http://localhost:8000/mcp` at init
-- MCP protocol endpoint: `POST http://localhost:8000/mcp` (FastMCP streamable-http transport)
-- Tool returns are uniform `dict` or `list[dict]` — no mixed `str|list` unions
-- `fetch_tech_news` fallback prepends `{"status": "..."}` sentinel to result list — never raises
+- Gemini tool binding is **dynamic** — `sidepanel.js` POSTs `tools/list` to `http://localhost:8000/mcp` at init, converts to `functionDeclarations`
+- MCP protocol endpoint: `POST http://localhost:8000/mcp` (FastMCP streamable-http transport, JSON-RPC 2.0)
+- Tool returns are uniform `dict` or `list[dict]` — no mixed `str|list` unions; exceptions return `[{status: "error message"}]`
+- Fallback pattern: `fetch_tech_news` & `search_internet` return `{status}` sentinel, never raise (keeps agent running)
+- Theme matching: Gemini must select best-match theme from exact list (medical, security, rust, python, ai, web, cloud, data, game, crypto, hardware, linux, science, devtools, infra, default)
 - Python version pinned to 3.14 (`.python-version`)
+- Prefab dashboard rendering happens client-side (JS), not server-side HTML generation
 
 ## Project Layout
 
 ```
 agent_curator/
-├── main.py                    # FastMCP server + 3 tools + /dashboard route
+├── main.py                    # FastMCP server + 5 tools + /dashboard route
 ├── test_mcp.py               # Async Streamable-HTTP client test
 ├── saved_articles.json        # Local article library (auto-created on first save)
-├── pyproject.toml             # Python deps
+├── pyproject.toml             # Python deps (fastmcp, uvicorn, httpx, prefab-ui, ddgs)
 ├── uv.lock                    # Locked deps (managed by uv)
 ├── .python-version            # Python 3.14 pin
 ├── graphify-out/              # Knowledge graph
 └── extension/
-    ├── manifest.json          # MV3 — permissions: sidePanel, storage
-    ├── sidepanel.html         # Side panel UI
-    ├── sidepanel.js           # Gemini agentic loop + MCP proxy
+    ├── manifest.json          # MV3 — permissions: sidePanel, storage; host: localhost:8000, googleapis.com, cdn.jsdelivr.net
+    ├── sidepanel.html         # Main side panel UI (orchestrator + dashboard/chart rendering)
+    ├── sidepanel.js           # Gemini agentic loop + MCP proxy + chart/dashboard injection
     ├── background.js          # Service worker — opens side panel on icon click
-    └── genai.js               # Bundled @google/genai ES module (no build step)
+    ├── options.html           # API key settings page
+    ├── options.js             # Save/load Gemini API key to chrome.storage.local
+    └── genai.js               # Bundled @google/genai ES module
 ```
 
 ## Code Patterns
 
 **Backend (main.py):**
-- `@mcp.tool()` decorator registers functions as MCP tools auto-exposed via `/mcp` endpoint
-- Tool docstrings become Gemini function descriptions
+- `@mcp.tool()` decorator registers async/sync functions as MCP tools auto-exposed via `/mcp` endpoint
+- Tool docstrings become Gemini function descriptions (critical for agents to understand usage)
 - `_load_library()` / `_save_library()` abstract JSON read/write
-- Fallback pattern: catch exception → return cached data + status sentinel (never raise)
+- Theme system: `_TOPIC_PALETTES` dict maps topic keywords (rust, python, ai, etc.) to color schemes; fallback to `_DEFAULT_META`
+- Fallback pattern: catch exception → return cached data + `{status: "..."}` sentinel (never raise to agent)
+- DDGS integration: `search_internet()` uses DuckDuckGo for broader web search when HN insufficient
 
 **Tool Return Schemas:**
-- `fetch_tech_news`: `[{title, url, points}, ...]` or `[{status}, {title, url, points}, ...]` on fallback
+- `fetch_tech_news`: `[{title, url, points}, ...]` or `[{status}, ...]` on fallback
+- `search_internet`: `[{title, url, snippet}, ...]` or `[{status: "Search failed: ..."}]` on exception
 - `manage_local_library`: `{status, articles?}` dict
-- `render_prefab_dashboard`: HTML string (complete self-contained page)
+- `render_prefab_dashboard`: `{status, topic, theme, cards}` dict (client renders HTML)
+- `render_analytics_chart`: `{status, title, type, data: {labels, datasets}}` dict
 
 **Frontend (extension/sidepanel.js):**
-- Init: `mcpInitialize()` → `loadMcpTools()` → register declarations with Gemini
-- Agentic loop: `generateContent` → detect `functionCalls` → `callMcpTool()` → push `functionResponse` → repeat up to 12 turns
-- `render_prefab_dashboard` result → `$frame.src = http://localhost:8000/dashboard` (iframe loads from backend, not srcdoc)
-- MCP session continuity: `mcp-session-id` header persisted across requests in `mcpSessionId`
+- Init: `mcpInitialize()` → `loadMcpTools()` → convert to Gemini `functionDeclarations` schema
+- Agentic loop: `generateContent` → detect `functionCalls` → `callMcpTool()` → `functionResponse` → repeat up to 12 turns (configurable `MAX_TURNS`)
+- Dashboard rendering: `render_prefab_dashboard` result → extract HTML from `/dashboard` endpoint → set `$dashboardRoot.innerHTML` (or inject into iframe)
+- Chart rendering: `render_analytics_chart` result → render SVG/canvas chart → inject into `<div id="chart-root">`
+- MCP session continuity: `mcp-session-id` header persisted across requests in `mcpSessionId` variable
+- Error state: if server unavailable, display "Server Disconnected" message (not silent failure)
 
 ## Testing & Verification
 
@@ -136,10 +153,11 @@ curl -X POST http://localhost:8000/mcp \
   }'
 ```
 
-**Unit Tests (pytest — when implemented):**
+**Unit Tests (pytest — not yet implemented):**
 - Verify `manage_local_library` deduplicates by URL
-- Mock Algolia API to test `fetch_tech_news` fallback
-- Verify `render_prefab_dashboard` returns valid HTML
+- Mock Algolia + DDGS APIs to test `fetch_tech_news` & `search_internet` fallbacks
+- Verify theme selection logic handles edge cases (misspelled topics fall back to default)
+- Verify chart spec generation with all chart types (bar, line, pie, percentage)
 
 ## Troubleshooting
 
