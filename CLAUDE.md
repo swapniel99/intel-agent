@@ -6,18 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **AgentCurator** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles, deduplicates them, and renders a curated dashboard. See `PRD.md` for full spec.
 
-**Current state:** Backend (`main.py`) complete. Frontend (Chrome Extension) not yet implemented.
+**Current state:** Backend (`main.py`) and frontend (`extension/`) both complete and functional.
 
 ## Architecture
 
 ### Frontend (Chrome Extension — Manifest V3)
-- Persistent **Side Panel** (`sidepanel.html` / `sidepanel.js`) acts as both Orchestrator and UI
-- `sidepanel.js` fetches tool definitions from backend at init (`GET /tools`), calls Gemini API with those tools, proxies Gemini tool-call requests to backend (`POST`), injects final HTML into `#prefab-container`
-- `background.js` opens the side panel on icon click via `chrome.sidePanel.setPanelBehavior`
-- Package manager: `pnpm`
+- Persistent **Side Panel** (`extension/sidepanel.html` / `sidepanel.js`) acts as both Orchestrator and UI
+- `sidepanel.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs a `MAX_TURNS=12` agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`, renders the final HTML via `<iframe src="http://localhost:8000/dashboard">` (not `srcdoc` — avoids CSP issues with Prefab's CDN module chunks)
+- `background.js` opens the side panel on icon click via `chrome.sidePanel.open`
+- `genai.js` is a bundled copy of `@google/genai` SDK (no build step needed — loaded as ES module)
+- Gemini API key stored in `chrome.storage.local`, entered once in the side panel UI
+- No package manager / build step — plain ES modules with bundled `genai.js`
 
 ### Backend (Python 3.14 + FastMCP)
-Runs on `http://localhost:8000`. FastMCP auto-exposes tools via SSE + HTTP POST.
+Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves the last rendered prefab HTML for iframe loading.
 
 **3 tools (all required):**
 | Tool | Type | Details |
@@ -37,10 +39,8 @@ Runs on `http://localhost:8000`. FastMCP auto-exposes tools via SSE + HTTP POST.
 ## Setup & Commands
 
 ```bash
-# Backend — one-time setup
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .          # installs fastmcp, httpx, prefab-ui, uvicorn
+# Backend — one-time setup (uses uv, not pip directly)
+uv sync                   # installs fastmcp, httpx, prefab-ui, uvicorn from uv.lock
 
 # Backend — run server
 python main.py            # http://localhost:8000 (streamable-http transport)
@@ -49,11 +49,10 @@ python main.py            # http://localhost:8000 (streamable-http transport)
 python test_mcp.py        # async Streamable-HTTP client test → lists tools from running server
 
 # Backend — run tests (when implemented)
-pytest                    # unit tests for file CRUD, deduplication, API fallback
+pytest
 
-# Frontend
-# pnpm install                    # when manifest.json + sidepanel.html created
-# Load unpacked extension from chrome://extensions/
+# Frontend — no build step
+# Load unpacked extension from chrome://extensions/ → "Load unpacked" → select extension/
 ```
 
 ## Demo Sequence (must be demonstrable)
@@ -72,21 +71,19 @@ User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("chec
 
 ```
 agent_curator/
-├── main.py                    # FastMCP server + 3 tools (fetch, manage, render)
+├── main.py                    # FastMCP server + 3 tools + /dashboard route
 ├── test_mcp.py               # Async Streamable-HTTP client test
 ├── saved_articles.json        # Local article library (auto-created on first save)
-├── pyproject.toml             # Python dependencies
+├── pyproject.toml             # Python deps
+├── uv.lock                    # Locked deps (managed by uv)
 ├── .python-version            # Python 3.14 pin
-├── CLAUDE.md                  # This file
-├── README.md                  # Quick start guide
-├── PRD.md                     # Complete spec + acceptance criteria
-├── graphify-out/              # Knowledge graph (run `graphify update .` after code changes)
-└── [FRONTEND TBD]
-    ├── manifest.json          # Extension metadata
-    ├── sidepanel.html         # Side panel UI template
-    ├── sidepanel.js           # Gemini orchestrator + tool proxy
-    ├── background.js          # Service worker (open panel on icon click)
-    └── package.json / pnpm-lock.yaml
+├── graphify-out/              # Knowledge graph
+└── extension/
+    ├── manifest.json          # MV3 — permissions: sidePanel, storage
+    ├── sidepanel.html         # Side panel UI
+    ├── sidepanel.js           # Gemini agentic loop + MCP proxy
+    ├── background.js          # Service worker — opens side panel on icon click
+    └── genai.js               # Bundled @google/genai ES module (no build step)
 ```
 
 ## Code Patterns
@@ -102,10 +99,11 @@ agent_curator/
 - `manage_local_library`: `{status, articles?}` dict
 - `render_prefab_dashboard`: HTML string (complete self-contained page)
 
-**Frontend (TBD):**
-- Init: `POST /mcp tools/list` → parse + register with Gemini
-- Tool call: Gemini requests tool → `POST /mcp tools/call` → feed result back to Gemini
-- Final render: `<iframe srcdoc={render_prefab_dashboard result}>`
+**Frontend (extension/sidepanel.js):**
+- Init: `mcpInitialize()` → `loadMcpTools()` → register declarations with Gemini
+- Agentic loop: `generateContent` → detect `functionCalls` → `callMcpTool()` → push `functionResponse` → repeat up to 12 turns
+- `render_prefab_dashboard` result → `$frame.src = http://localhost:8000/dashboard` (iframe loads from backend, not srcdoc)
+- MCP session continuity: `mcp-session-id` header persisted across requests in `mcpSessionId`
 
 ## Testing & Verification
 

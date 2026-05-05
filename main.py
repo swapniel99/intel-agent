@@ -22,6 +22,7 @@ from prefab_ui.components import (
     Link,
     Span,
 )
+from prefab_ui.themes import Theme
 
 LIBRARY_FILE = Path(__file__).parent / "saved_articles.json"
 _last_dashboard_html: str = ""
@@ -124,35 +125,95 @@ async def dashboard_handler(request: Request) -> HTMLResponse:
     return HTMLResponse(_last_dashboard_html or "<h1>No dashboard yet</h1>")
 
 
+_TOPIC_THEMES: list[tuple[list[str], float, str]] = [
+    (["medical", "health", "bio", "medgemma", "pharma", "clinical"], 175.0, "🏥"),
+    (["security", "hack", "exploit", "vuln", "cyber", "malware", "cve"], 5.0, "🔐"),
+    (["rust", "cargo", "crate"], 22.0, "🦀"),
+    (["python", "django", "flask", "fastapi"], 210.0, "🐍"),
+    (["ai", "llm", "ml", "machine learning", "gpt", "gemini", "claude", "neural", "model"], 270.0, "🤖"),
+    (["web", "react", "vue", "angular", "frontend", "css", "html", "javascript", "typescript"], 195.0, "🌐"),
+    (["cloud", "aws", "gcp", "azure", "kubernetes", "docker", "devops", "infra"], 230.0, "☁️"),
+    (["data", "database", "sql", "postgres", "analytics", "etl"], 150.0, "🗄️"),
+    (["game", "unity", "unreal", "wasm"], 45.0, "🎮"),
+    (["crypto", "blockchain", "web3", "defi"], 55.0, "⛓️"),
+]
+_DEFAULT_HUE = 220.0
+_DEFAULT_EMOJI = "📰"
+
+
+def _topic_meta(topic: str) -> tuple[float, str]:
+    """Return (hue, emoji) for a topic string."""
+    lower = topic.lower()
+    for keywords, hue, emoji in _TOPIC_THEMES:
+        if any(kw in lower for kw in keywords):
+            return hue, emoji
+    return _DEFAULT_HUE, _DEFAULT_EMOJI
+
+
+def _badge_variant(points: int) -> str:
+    if points >= 10:
+        return "default"   # uses --primary → topic accent color
+    if points >= 3:
+        return "default"
+    if points >= 1:
+        return "outline"
+    return "secondary"
+
+
 @mcp.tool()
-def render_prefab_dashboard(cards: list[dict]) -> str:
+def render_prefab_dashboard(cards: list[dict], topic: str = "tech") -> str:
     """Compile curated articles into a self-contained Prefab HTML dashboard.
 
     Each card should have: title, url, points, ai_summary (optional).
+    topic is the search subject (e.g. 'medgemma', 'rust', 'LLMs') — used to
+    pick accent color and emoji for the dashboard heading.
     Returns a complete HTML page using prefab-ui components.
     """
     global _last_dashboard_html
+
+    hue, emoji = _topic_meta(topic)
+    primary = f"oklch(0.72 0.20 {hue});"
+    dark_vars = (
+        f"--background: #0f1117;"
+        f"--foreground: #e2e8f0;"
+        f"--card: #1a2033;"
+        f"--card-foreground: #e2e8f0;"
+        f"--border: #1e2535;"
+        f"--muted: #1e2535;"
+        f"--muted-foreground: #9ca3af;"
+        f"--popover: #1a2033;"
+        f"--popover-foreground: #e2e8f0;"
+        f"--primary: {primary}"
+        f"--primary-foreground: #0f1117;"
+        f"--ring: {primary}"
+        f"--accent-hue: {hue};"
+    )
+    theme = Theme(accent=hue, mode="dark", light_css=dark_vars, dark_css=dark_vars)
+    heading_text = f"{emoji} {topic.title()} Dashboard"
+    dark_bootstrap = "html,body{background:#0f1117;color:#e2e8f0}"
+
     if not cards:
-        with PrefabApp() as app:
-            Heading("📰 AgentCurator Dashboard")
+        with PrefabApp(title=heading_text, theme=theme, stylesheets=[dark_bootstrap]) as app:
+            Heading(heading_text)
             Span("No articles to display.")
         _last_dashboard_html = app.html()
         return _last_dashboard_html
 
-    with PrefabApp() as app:
-        Heading("📰 AgentCurator Dashboard")
+    with PrefabApp(title=heading_text, theme=theme, stylesheets=[dark_bootstrap]) as app:
+        Heading(heading_text)
         with Column(gap=3):
             for card in cards:
+                points = card.get("points", 0) or 0
                 with Card():
                     with CardHeader():
-                        with Div(css_class="flex items-center justify-between"):
+                        with Div(css_class="flex items-center justify-between gap-2"):
                             CardTitle(card.get("title", "Untitled"))
-                            Badge(f"▲ {card.get('points', 0)}", variant="secondary")
+                            Badge(f"▲ {points}", variant=_badge_variant(points))
                     with CardContent():
                         Link(
                             card.get("url", "#"),
                             href=card.get("url", "#"),
-                            css_class="text-sm text-blue-600 underline break-all",
+                            css_class="text-sm underline break-all text-primary",
                         )
                         summary = card.get("ai_summary", "")
                         if summary:
