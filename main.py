@@ -165,17 +165,28 @@ def render_prefab_dashboard(
     display_title: str = "",
     chart: dict | None = None,
 ) -> dict:
-    """Compile curated articles (and optional chart) into a Prefab dashboard.
+    """The MANDATORY FINAL STEP for any research or data retrieval task.
+    Compile curated articles (and optional chart) into a professional Prefab dashboard.
 
-    Each card: {title, url, points, ai_summary?}.
+    ALWAYS call this tool once you have your final list of articles/data. DO NOT
+    just return the raw text list from fetch_tech_news.
+
+    Each card: {title, url, points, ai_summary: "mandatory 1-sentence summary"}.
     topic: full search subject (e.g. 'Local LLMs').
     theme_key: pick best match from: medical, security, rust, python, ai, web,
         cloud, data, game, crypto, hardware, linux, science, devtools, infra, default.
-        Examples: pytorch→ai, kubernetes→infra, solidity→crypto, medgemma→medical,
-        nextjs→web, risc-v→hardware, kernel→linux, crispr→science, neovim→devtools.
     display_title: short heading (capitalise AI, LLM, SQL, AWS, GCP, API, ML, UI, CSS, HTML, JS, TS, DB).
-    chart (optional): {type, title, labels, values}. type ∈ bar/line/pie/area/scatter/radar/sparkline.
-    Returns {status} — client loads /dashboard iframe to display.
+
+    CHART GUIDELINES:
+    - ONLY include a chart if the data is quantitative (numbers, percentages, shares).
+    - If data is purely qualitative (news titles, opinions), set chart=None.
+    - pie: Use for Market Share, Proportions, or Percentage distributions.
+    - line/area: Use for Trends over time or sequential data.
+    - bar: Use for Comparisons between discrete categories (e.g., points, counts).
+    - radar: Use for Multi-variable comparisons (e.g., feature sets).
+    - chart object: {type, title, labels, values}. type ∈ bar/line/pie/area/scatter/radar/sparkline.
+
+    Returns {status} — the Chrome Extension will automatically render the dashboard in the side panel.
     """
     global _LAST_DASHBOARD_HTML
     logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', theme='{theme_key}', cards={len(cards)}, chart={chart and chart.get('type')})")
@@ -190,14 +201,37 @@ def render_prefab_dashboard(
 
             if chart and chart.get("type") in _CHART_REGISTRY:
                 ChartCls = _CHART_REGISTRY[chart["type"]]
+                ctype = chart["type"]
                 labels = chart.get("labels", [])
                 values = chart.get("values", [])
                 chart_title = chart.get("title", "")
                 data = [{"label": l, "value": v} for l, v in zip(labels, values)]
+
                 if chart_title:
                     H3(chart_title)
-                if chart["type"] == "sparkline":
+
+                if ctype == "sparkline":
                     ChartCls(data=values)
+                elif ctype == "pie":
+                    ChartCls(
+                        data=data,
+                        data_key="value",
+                        name_key="label",
+                        show_legend=True,
+                    )
+                elif ctype == "radar":
+                    ChartCls(
+                        data=data,
+                        series=[ChartSeries(data_key="value", label=chart_title or "Value")],
+                        axis_key="label",
+                    )
+                elif ctype == "scatter":
+                    ChartCls(
+                        data=data,
+                        series=[ChartSeries(data_key="value", label=chart_title or "Value")],
+                        x_axis="label",
+                        y_axis="value",
+                    )
                 else:
                     ChartCls(
                         data=data,
@@ -210,7 +244,7 @@ def render_prefab_dashboard(
                         with Row():
                             H3(c.get("title", "Untitled"))
                             Badge(label=f"▲ {c.get('points', 0) or 0}", variant="info")
-                        Markdown(f"[{c.get('url', '#')}]({c.get('url', '#')})")
+                        Markdown(f"[Click Here]({c.get('url', '#')})")
                         if c.get("ai_summary"):
                             Muted(c["ai_summary"])
 

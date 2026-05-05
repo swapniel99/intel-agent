@@ -145,19 +145,22 @@ Pick tools based on the user's intent.
 
 Intent classification:
 - ARTICLE_CURATION: user wants a list/feed/digest of articles.
-  - Use fetch_tech_news for tech trends/community discussion.
-  - Use Built-in Google Search for general news/product updates.
-  → manage_local_library(check_duplicates) → manage_local_library(save_new) → render_prefab_dashboard
+  - Use 'fetch_tech_news' as the PRIMARY tool for tech trends, startups, and developer community discussions.
+  - Use Built-in Google Search only for general news, factual specifications, or non-tech topics.
+  → manage_local_library(check_duplicates) → generate a concise (1-sentence) summary for each novel article → manage_local_library(save_new) → render_prefab_dashboard
 - TREND_ANALYSIS: user asks about trends/comparisons/visualization.
   - Gather data via fetch_tech_news or Google Search.
-  → render_prefab_dashboard with chart={type, title, labels, values}
+  → generate a concise summary of findings → render_prefab_dashboard with chart={type, title, labels, values}
 - COMBINED: articles + chart in one render_prefab_dashboard call (pass cards AND chart).
 
 Rules:
 - MERGE results from both internet tools when used together before calling library/dashboard.
 - Use current date to filter stale results unless user asks historical.
-- render_prefab_dashboard is the ONLY render tool. Pass cards (articles) and/or chart (visualization).
-- chart.type ∈ bar, line, pie, area, scatter, radar, sparkline. Pick best fit.
+- render_prefab_dashboard is the MANDATORY FINAL STEP for presenting research. ALWAYS call it.
+- DO NOT just list articles in text. Use the dashboard tool.
+- USE CHARTS for any quantitative data (percentages, market share, trends).
+- chart.type ∈ bar, line, pie, area, scatter, radar, sparkline.
+- PIE CHART: Use specifically for "Market Share", "Distribution", or "Proportions".
 - For render_prefab_dashboard: pass user's search subject verbatim as topic, pick best theme_key.
 - NEVER emit chart specs, JSON, dashboard HTML, or data arrays inline. Use the tool.
 - Text responses: 2-3 sentences max prose only. No code blocks, no structured data.
@@ -198,7 +201,7 @@ Rules:
     contents.push({ role: "model", parts });
 
     const toolCalls = response.functionCalls;
-    const responseText = response.text;
+    const responseText = parts.filter(p => p.text).map(p => p.text).join("");
     if (responseText) appendGemini(responseText);
 
     if (!toolCalls || toolCalls.length === 0) {
