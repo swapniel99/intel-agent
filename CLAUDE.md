@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AgentCurator** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles, deduplicates them, and renders a curated dashboard. It uses Gemini's Dynamic Grounding (Google Search) for factual verification and Hacker News for community trends.
+**AgentCurator** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles, deduplicates them, and renders a curated dashboard.
 
 **Current state:** Backend (`main.py`) and frontend (`extension/`) both complete and functional.
 
@@ -68,6 +68,7 @@ pytest
 ## Key Constraints
 
 - Gemini tool binding is **dynamic** — `sidepanel.js` POSTs `tools/list` to `http://localhost:8000/mcp` at init, converts to `functionDeclarations`
+- Gemini model pinned: `gemini-3.1-flash-lite-preview` (sidepanel.js:4) — preview SKU, swap when GA
 - MCP protocol endpoint: `POST http://localhost:8000/mcp` (FastMCP streamable-http transport, JSON-RPC 2.0)
 - Tool returns are uniform `dict` or `list[dict]` — no mixed `str|list` unions; exceptions return `[{status: "error message"}]`
 - Fallback pattern: `fetch_tech_news` returns `{status}` sentinel, never raises (keeps agent running)
@@ -98,7 +99,6 @@ agent_curator/
     ├── options.js             # Save/load Gemini API key to chrome.storage.local
     ├── genai.js               # Bundled @google/genai ES module
     └── lib/
-        └── frappe-charts.min.iife.js  # Legacy (unused)
 ```
 
 ## Code Patterns
@@ -130,11 +130,11 @@ agent_curator/
 **Manual Server Test (Streamable-HTTP):**
 ```bash
 # Terminal 1: Start backend
-python main.py
+./.venv/bin/python main.py
 
 # Terminal 2: Run connectivity test
-python test_mcp.py
-# Output: lists all 4 tools (fetch_tech_news, manage_local_library, render_prefab_dashboard, render_analytics_chart)
+./.venv/bin/python test_mcp.py
+# Output: lists all 3 tools (fetch_tech_news, manage_local_library, render_prefab_dashboard)
 ```
 
 **Integration Test (curl):**
@@ -155,12 +155,6 @@ curl -X POST http://localhost:8000/mcp \
     }
   }'
 ```
-
-**Unit Tests (pytest — not yet implemented):**
-- Verify `manage_local_library` deduplicates by URL
-- Mock Algolia API to test `fetch_tech_news` fallback to `saved_articles.json`
-- Verify theme selection logic handles edge cases (misspelled topics fall back to default)
-- Verify chart spec generation with all chart types (bar, line, pie, percentage)
 
 ## Troubleshooting
 
