@@ -16,7 +16,7 @@ from prefab_ui.components.charts import (
     AreaChart, BarChart, ChartSeries, LineChart, PieChart,
     RadarChart, RadialChart,
 )
-from prefab_ui.components.card import Card
+from prefab_ui.components.card import Card, CardHeader, CardTitle, CardContent
 from prefab_ui.components.column import Column
 from prefab_ui.components.row import Row
 from prefab_ui.components.badge import Badge
@@ -319,14 +319,14 @@ def render_prefab_dashboard(
 
             for c in cards:
                 with Card():
-                    with Column():
-                        with Row():
-                            H3(c.get("title", "Untitled"))
-                        with Row():
+                    with CardHeader():
+                        with Row(align="center", gap=2):
+                            with CardTitle():
+                                Markdown(f"[{c.get('title', 'Untitled')}]({c.get('url', '#')})")
                             Badge(label=f"▲ {c.get('points', 0) or 0}", variant="info")
                             if c.get("source"):
                                 Badge(label=c["source"].upper(), variant="secondary")
-                        Markdown(f"[Click Here]({c.get('url', '#')})")
+                    with CardContent():
                         if c.get("ai_summary"):
                             Muted(c["ai_summary"])
 
