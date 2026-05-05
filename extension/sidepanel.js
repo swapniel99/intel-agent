@@ -11,7 +11,7 @@ const $runBtn = document.getElementById("run-btn");
 const $promptInput = document.getElementById("prompt-input");
 const $apiKeyInput = document.getElementById("api-key-input");
 const $saveKeyBtn = document.getElementById("save-key-btn");
-const $frame = document.getElementById("prefab-frame");
+const $dashboardRoot = document.getElementById("prefab-root");
 const $emptyState = document.getElementById("empty-state");
 
 let mcpTools = [];
@@ -116,9 +116,7 @@ You MUST always complete the full pipeline using the available tools in this ord
 3. Call manage_local_library with action="save_new" to save novel articles
 4. Call render_prefab_dashboard with the articles to render the UI
 
-For render_prefab_dashboard, classify the user's topic into the single best-matching category from this list and pass that category name as the topic argument:
-medical, security, rust, python, ai, web, cloud, data, game, crypto
-If the topic fits none of these, pick the closest one by domain (e.g. "kubernetes" → cloud, "pytorch" → ai, "solidity" → crypto). Never pass the full prompt as topic.
+For render_prefab_dashboard: pass the user's search subject verbatim as topic, and pick the best theme_key from the tool's description.
 
 You MUST call render_prefab_dashboard as the final step — never skip it, never describe the dashboard in text instead of rendering it.`;
 
@@ -168,8 +166,8 @@ You MUST call render_prefab_dashboard as the final step — never skip it, never
 
       appendLog(`  ← ${JSON.stringify(toolResult).slice(0, 120)}`, "result");
 
-      if (name === "render_prefab_dashboard" && typeof toolResult === "string") {
-        renderPrefab(toolResult);
+      if (name === "render_prefab_dashboard" && toolResult?.status === "dashboard_ready") {
+        renderDashboard(toolResult);
       }
 
       toolResponseParts.push({
@@ -205,11 +203,32 @@ function clearLog() {
   $log.innerHTML = "";
 }
 
-function renderPrefab(_html) {
+function renderDashboard({ topic, theme, cards }) {
   $emptyState.style.display = "none";
-  // Load from backend endpoint — avoids srcdoc/blob CSP issues with Prefab's CDN module chunks
-  $frame.removeAttribute("srcdoc");
-  $frame.src = `http://localhost:8000/dashboard?t=${Date.now()}`;
+  const { emoji, hue, bg, card: cardBg, fg, muted, border } = theme;
+  const accent = `oklch(0.72 0.20 ${hue})`;
+
+  const cardHtml = cards.length === 0
+    ? `<p style="color:${muted}">No articles to display.</p>`
+    : cards.map(c => `
+        <div style="background:${cardBg};border:1px solid ${border};border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <span style="font-weight:600;font-size:13px;line-height:1.4;color:${fg}">${escHtml(c.title)}</span>
+            <span style="flex-shrink:0;font-size:11px;padding:2px 7px;border-radius:999px;background:${accent}22;color:${accent};border:1px solid ${accent}55">▲ ${c.points}</span>
+          </div>
+          <a href="${escHtml(c.url)}" target="_blank" style="font-size:12px;color:${accent};word-break:break-all;text-decoration:underline">${escHtml(c.url)}</a>
+          ${c.ai_summary ? `<p style="font-size:12px;color:${muted};margin-top:2px">${escHtml(c.ai_summary)}</p>` : ""}
+        </div>`).join("");
+
+  $dashboardRoot.innerHTML = `
+    <div style="background:${bg};min-height:100%;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+      <h2 style="font-size:16px;font-weight:700;color:${fg};margin-bottom:14px">${emoji} ${escHtml(topic)}</h2>
+      <div style="display:flex;flex-direction:column;gap:10px">${cardHtml}</div>
+    </div>`;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function setServerStatus(online) {

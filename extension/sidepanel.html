@@ -140,15 +140,12 @@
       flex: 1;
       position: relative;
       min-height: 0;
+      overflow-y: auto;
     }
 
-    #prefab-frame {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-      display: block;
+    #prefab-root {
+      min-height: 100%;
+      padding: 16px;
     }
 
     #empty-state {
@@ -201,7 +198,7 @@
       </svg>
       <p>Run a prompt to see your curated dashboard</p>
     </div>
-    <iframe id="prefab-frame"></iframe>
+    <div id="prefab-root"></div>
   </div>
 
   <script type="module" src="sidepanel.js"></script>
