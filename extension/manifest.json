@@ -16,5 +16,6 @@
   },
   "action": {
     "default_title": "Open AgentCurator"
-  }
+  },
+  "options_page": "options.html"
 }

@@ -9,10 +9,13 @@ const $status = document.getElementById("status-bar");
 const $log = document.getElementById("log-section");
 const $runBtn = document.getElementById("run-btn");
 const $promptInput = document.getElementById("prompt-input");
-const $apiKeyInput = document.getElementById("api-key-input");
-const $saveKeyBtn = document.getElementById("save-key-btn");
 const $dashboardRoot = document.getElementById("prefab-root");
 const $emptyState = document.getElementById("empty-state");
+const $settingsBtn = document.getElementById("settings-btn");
+const $settingsPanel = document.getElementById("settings-panel");
+const $apiKeyInput = document.getElementById("api-key-input");
+const $saveKeyBtn = document.getElementById("save-key-btn");
+const $keyStatus = document.getElementById("key-status");
 
 let mcpTools = [];
 let geminiApiKey = "";
@@ -262,12 +265,19 @@ function loadApiKey() {
   chrome.storage.local.get([API_KEY_STORAGE], result => {
     geminiApiKey = result[API_KEY_STORAGE] || "";
     if (geminiApiKey) {
-      $apiKeyInput.value = "••••••••••••••••";
       initGemini(geminiApiKey);
+      $apiKeyInput.value = "••••••••••••••••";
+    } else {
+      setStatus("No API key — click ⚙️ to add one.");
     }
     $runBtn.disabled = !geminiApiKey;
   });
 }
+
+$settingsBtn.addEventListener("click", () => {
+  const visible = $settingsPanel.classList.toggle("visible");
+  $settingsBtn.classList.toggle("active", visible);
+});
 
 $saveKeyBtn.addEventListener("click", () => {
   const key = $apiKeyInput.value.trim();
@@ -276,8 +286,9 @@ $saveKeyBtn.addEventListener("click", () => {
   initGemini(key);
   chrome.storage.local.set({ [API_KEY_STORAGE]: key }, () => {
     $apiKeyInput.value = "••••••••••••••••";
-    setStatus("API key saved.", "success");
+    $keyStatus.textContent = "Saved.";
     $runBtn.disabled = false;
+    setTimeout(() => { $keyStatus.textContent = ""; }, 2000);
     checkServer();
   });
 });
@@ -299,6 +310,15 @@ $runBtn.addEventListener("click", async () => {
 
 $promptInput.addEventListener("keydown", e => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $runBtn.click();
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes[API_KEY_STORAGE]?.newValue) {
+    geminiApiKey = changes[API_KEY_STORAGE].newValue;
+    initGemini(geminiApiKey);
+    $runBtn.disabled = false;
+    setStatus("API key updated. Enter a prompt.");
+  }
 });
 
 loadApiKey();
