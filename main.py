@@ -1,9 +1,6 @@
 import json
 import uuid
 import logging
-# from ddgs import DDGS
-import urllib.parse
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -17,7 +14,7 @@ from starlette.responses import HTMLResponse
 from prefab_ui import PrefabApp
 from prefab_ui.components.charts import (
     AreaChart, BarChart, ChartSeries, LineChart, PieChart,
-    RadarChart, ScatterChart, Sparkline,
+    RadarChart, ScatterChart, Sparkline, RadialChart,
 )
 from prefab_ui.components.card import Card
 from prefab_ui.components.column import Column
@@ -29,7 +26,7 @@ from prefab_ui.components.typography import H2, H3, Muted
 _CHART_REGISTRY = {
     "bar": BarChart, "line": LineChart, "pie": PieChart,
     "area": AreaChart, "scatter": ScatterChart, "radar": RadarChart,
-    "sparkline": Sparkline,
+    "sparkline": Sparkline, "radial": RadialChart,
 }
 
 _LAST_DASHBOARD_HTML: str = ""
@@ -137,24 +134,12 @@ def manage_local_library(action: str, articles: list[dict] | None = None) -> dic
     return {"status": f"Unknown action '{action}'. Use 'check_duplicates' or 'save_new'."}
 
 
-_TOPIC_PALETTES: dict[str, dict] = {
-    "medical":  {"emoji": "🏥", "hue": 175, "bg": "#071a18", "card": "#0d2820", "fg": "#c8f0eb", "muted": "#6bbfb5", "border": "#1a4040"},
-    "security": {"emoji": "🔐", "hue": 5,   "bg": "#1a0707", "card": "#280d0d", "fg": "#f0cdc8", "muted": "#bf6b6b", "border": "#401a1a"},
-    "rust":     {"emoji": "🦀", "hue": 22,  "bg": "#1a0e07", "card": "#28180d", "fg": "#f0d9c8", "muted": "#bf956b", "border": "#40280d"},
-    "python":   {"emoji": "🐍", "hue": 210, "bg": "#07101a", "card": "#0d1a28", "fg": "#c8daf0", "muted": "#6b9abf", "border": "#1a2e40"},
-    "ai":       {"emoji": "🤖", "hue": 270, "bg": "#10071a", "card": "#180d28", "fg": "#dcc8f0", "muted": "#9b6bbf", "border": "#2e1a40"},
-    "web":      {"emoji": "🌐", "hue": 195, "bg": "#07141a", "card": "#0d2028", "fg": "#c8e8f0", "muted": "#6baebf", "border": "#1a3040"},
-    "cloud":    {"emoji": "☁️", "hue": 230, "bg": "#07101a", "card": "#0d1828", "fg": "#c8d4f0", "muted": "#6b80bf", "border": "#1a2440"},
-    "data":     {"emoji": "🗄️", "hue": 150, "bg": "#071a0e", "card": "#0d2816", "fg": "#c8f0d4", "muted": "#6bbf80", "border": "#1a402a"},
-    "game":     {"emoji": "🎮", "hue": 45,  "bg": "#1a1007", "card": "#28180d", "fg": "#f0e0c8", "muted": "#bfa06b", "border": "#40300d"},
-    "crypto":   {"emoji": "⛓️", "hue": 55,  "bg": "#1a1407", "card": "#28200d", "fg": "#f0eac8", "muted": "#bfae6b", "border": "#403810"},
-    "hardware": {"emoji": "🔧", "hue": 30,  "bg": "#1a0f07", "card": "#281808", "fg": "#f0dcc8", "muted": "#bf8c6b", "border": "#40250d"},
-    "linux":    {"emoji": "🐧", "hue": 240, "bg": "#07081a", "card": "#0d1028", "fg": "#c8caf0", "muted": "#6b6ebf", "border": "#1a1c40"},
-    "science":  {"emoji": "🔬", "hue": 165, "bg": "#071a12", "card": "#0d281c", "fg": "#c8f0de", "muted": "#6bbf96", "border": "#1a4030"},
-    "devtools": {"emoji": "🛠️", "hue": 185, "bg": "#07171a", "card": "#0d2428", "fg": "#c8eef0", "muted": "#6bb8bf", "border": "#1a3840"},
-    "infra":    {"emoji": "🏗️", "hue": 215, "bg": "#07101a", "card": "#0d1a2a", "fg": "#c8d8f0", "muted": "#6b90bf", "border": "#1a2a40"},
+_TOPIC_PALETTES: dict[str, str] = {
+    "medical":  "🏥", "security": "🔐", "rust": "🦀", "python": "🐍", "ai": "🤖",
+    "web": "🌐", "cloud": "☁️", "data": "🗄️", "game": "🎮", "crypto": "⛓️",
+    "hardware": "🔧", "linux": "🐧", "science": "🔬", "devtools": "🛠️", "infra": "🏗️",
 }
-_DEFAULT_META = {"emoji": "📰", "hue": 220, "bg": "#0f1117", "card": "#1a2033", "fg": "#e2e8f0", "muted": "#9ca3af", "border": "#1e2535"}
+_DEFAULT_EMOJI = "📰"
 
 
 @mcp.tool()
@@ -165,11 +150,10 @@ def render_prefab_dashboard(
     display_title: str = "",
     chart: dict | None = None,
 ) -> dict:
-    """The MANDATORY FINAL STEP for any research or data retrieval task.
+    """The FINAL STEP for any research or data retrieval task.
     Compile curated articles (and optional chart) into a professional Prefab dashboard.
 
-    ALWAYS call this tool once you have your final list of articles/data. DO NOT
-    just return the raw text list from fetch_tech_news.
+    ONLY call this tool ONCE at the very end of your research. DO NOT call it multiple times.
 
     Each card: {title, url, points, ai_summary: "mandatory 1-sentence summary"}.
     topic: full search subject (e.g. 'Local LLMs').
@@ -184,15 +168,19 @@ def render_prefab_dashboard(
     - line/area: Use for Trends over time or sequential data.
     - bar: Use for Comparisons between discrete categories (e.g., points, counts).
     - radar: Use for Multi-variable comparisons (e.g., feature sets).
-    - chart object: {type, title, labels, values}. type ∈ bar/line/pie/area/scatter/radar/sparkline.
+    - chart object: {type, title, data, series, x_axis}. 
+      - data: list of dicts (rows).
+      - series: list of {data_key, label}.
+      - x_axis: key for labels (default "label").
+      - legacy format {labels, values} also supported.
 
     Returns {status} — the Chrome Extension will automatically render the dashboard in the side panel.
     """
     global _LAST_DASHBOARD_HTML
     logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', theme='{theme_key}', cards={len(cards)}, chart={chart and chart.get('type')})")
 
-    meta = _TOPIC_PALETTES.get(theme_key, _DEFAULT_META)
-    heading = f"{meta['emoji']} {display_title or topic}"
+    emoji = _TOPIC_PALETTES.get(theme_key, _DEFAULT_EMOJI)
+    heading = f"{emoji} {display_title or topic}"
 
     app = PrefabApp()
     with app:
@@ -200,38 +188,45 @@ def render_prefab_dashboard(
             H2(heading)
 
             if chart and chart.get("type") in _CHART_REGISTRY:
-                ChartCls = _CHART_REGISTRY[chart["type"]]
                 ctype = chart["type"]
-                labels = chart.get("labels", [])
-                values = chart.get("values", [])
+                ChartCls = _CHART_REGISTRY[ctype]
+                data = chart.get("data", [])
+                series_input = chart.get("series", [])
                 chart_title = chart.get("title", "")
-                data = [{"label": l, "value": v} for l, v in zip(labels, values)]
+                
+                # Simple/Backward compatibility format
+                if not data and chart.get("labels") and chart.get("values"):
+                    labels = chart["labels"]
+                    values = chart["values"]
+                    data = [{"label": l, "value": v} for l, v in zip(labels, values)]
+                    series_input = [{"data_key": "value", "label": chart_title or "Value"}]
 
                 if chart_title:
                     H3(chart_title)
 
                 if ctype == "sparkline":
-                    ChartCls(data=values)
-                elif ctype == "pie":
+                    ChartCls(data=chart.get("values", []))
+                elif ctype in ("pie", "radial"):
+                    # Circular charts use a single data_key
+                    dk = series_input[0]["data_key"] if series_input else "value"
+                    nk = chart.get("x_axis") or "label"
                     ChartCls(
                         data=data,
-                        data_key="value",
-                        name_key="label",
+                        data_key=dk,
+                        name_key=nk,
                         show_legend=True,
                     )
-                elif ctype == "radar":
-                    ChartCls(
-                        data=data,
-                        series=[ChartSeries(data_key="value", label=chart_title or "Value")],
-                        axis_key="label",
-                    )
-                elif ctype == "scatter":
-                    ChartCls(
-                        data=data,
-                        series=[ChartSeries(data_key="value", label=chart_title or "Value")],
-                        x_axis="label",
-                        y_axis="value",
-                    )
+                elif ctype in ("bar", "line", "area", "scatter", "radar"):
+                    series = [ChartSeries(**s) for s in series_input]
+                    kwargs = {"data": data, "series": series}
+                    
+                    if ctype == "radar":
+                        kwargs["axis_key"] = chart.get("x_axis") or "label"
+                    else:
+                        kwargs["x_axis"] = chart.get("x_axis") or "label"
+                        if ctype == "scatter":
+                            kwargs["y_axis"] = series[0].data_key if series else "value"
+                    ChartCls(**kwargs)
                 else:
                     ChartCls(
                         data=data,
@@ -250,29 +245,6 @@ def render_prefab_dashboard(
 
     _LAST_DASHBOARD_HTML = app.html()
     return {"status": "dashboard_ready", "topic": display_title or topic}
-
-
-# @mcp.tool()
-# async def search_internet(query: str, limit: int = 5) -> list[dict]:
-#     """Primary tool for GENERAL NEWS, FACTUAL INFO, and PRODUCT UPDATES.
-#     Use this for: "Is X released yet?", "Latest news about company Y",
-#     "Product features/specs", or broad tech news not specific to developers.
-#     Source: DuckDuckGo.
-#     """
-#     logger.info(f"Tool Call: search_internet(query='{query}', limit={limit})")
-#     try:
-#         results = []
-#         with DDGS() as ddgs:
-#             for r in ddgs.text(query, max_results=limit):
-#                 results.append({
-#                     "title": r.get("title", "No Title"),
-#                     "url": r.get("href", "#"),
-#                     "points": 0,
-#                     "snippet": r.get("body", "")
-#                 })
-#         return results
-#     except Exception as e:
-#         return [{"status": f"Search failed: {str(e)}"}]
 
 
 @mcp.custom_route("/dashboard", methods=["GET"])
