@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgentCurator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #1e2535;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    header .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+
+    header .dot.offline { background: #ef4444; }
+
+    #api-key-section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e2535;
+      display: flex;
+      gap: 8px;
+    }
+
+    #api-key-input {
+      flex: 1;
+      background: #1a2033;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 12px;
+      padding: 6px 10px;
+      outline: none;
+    }
+
+    #api-key-input:focus { border-color: #4f81f0; }
+
+    #save-key-btn {
+      background: #2563eb;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 6px 12px;
+      white-space: nowrap;
+    }
+
+    #save-key-btn:hover { background: #1d4ed8; }
+
+    #prompt-section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e2535;
+      display: flex;
+      gap: 8px;
+    }
+
+    #prompt-input {
+      flex: 1;
+      background: #1a2033;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      resize: none;
+      min-height: 60px;
+    }
+
+    #prompt-input:focus { border-color: #4f81f0; }
+    #prompt-input::placeholder { color: #4a5568; }
+
+    #run-btn {
+      background: #2563eb;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      align-self: flex-end;
+    }
+
+    #run-btn:hover { background: #1d4ed8; }
+    #run-btn:disabled { background: #374151; cursor: not-allowed; }
+
+    #status-bar {
+      padding: 8px 16px;
+      font-size: 11px;
+      color: #6b7280;
+      border-bottom: 1px solid #1e2535;
+      min-height: 28px;
+    }
+
+    #status-bar.error { color: #f87171; }
+    #status-bar.success { color: #34d399; }
+
+    #log-section {
+      padding: 8px 16px;
+      font-size: 11px;
+      color: #4a5568;
+      font-family: "SF Mono", "Fira Code", monospace;
+      max-height: 120px;
+      overflow-y: auto;
+      border-bottom: 1px solid #1e2535;
+    }
+
+    .log-entry { margin-bottom: 2px; }
+    .log-entry.tool { color: #818cf8; }
+    .log-entry.result { color: #34d399; }
+    .log-entry.warn { color: #fbbf24; }
+
+    #prefab-container {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+
+    #prefab-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    #empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #374151;
+    }
+
+    #empty-state svg { opacity: 0.4; }
+    #empty-state p { font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="dot" id="server-dot"></div>
+    <h1>AgentCurator</h1>
+  </header>
+
+  <div id="api-key-section">
+    <input
+      id="api-key-input"
+      type="password"
+      placeholder="Gemini API key (stored locally)"
+    />
+    <button id="save-key-btn">Save</button>
+  </div>
+
+  <div id="prompt-section">
+    <textarea
+      id="prompt-input"
+      placeholder='e.g. "Fetch top 4 articles on Local LLMs. Filter duplicates, save new ones, generate a Prefab dashboard."'
+    ></textarea>
+    <button id="run-btn" disabled>Run</button>
+  </div>
+
+  <div id="status-bar">Checking server…</div>
+
+  <div id="log-section"></div>
+
+  <div id="prefab-container">
+    <div id="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M4 6h16M4 12h16M4 18h7" />
+      </svg>
+      <p>Run a prompt to see your curated dashboard</p>
+    </div>
+    <iframe id="prefab-frame"></iframe>
+  </div>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

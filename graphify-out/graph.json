@@ -1,0 +1,414 @@
+{
+  "nodes": [
+    {
+      "id": "main__load_library",
+      "label": "_load_library",
+      "file_type": "code",
+      "community": 0,
+      "community_label": "README & Setup"
+    },
+    {
+      "id": "main__save_library",
+      "label": "_save_library",
+      "file_type": "code",
+      "community": 0,
+      "community_label": "README & Setup"
+    },
+    {
+      "id": "main_manage_local_library",
+      "label": "manage_local_library",
+      "file_type": "code",
+      "community": 0,
+      "community_label": "README & Setup"
+    },
+    {
+      "id": "main_render_prefab_dashboard",
+      "label": "render_prefab_dashboard",
+      "file_type": "code",
+      "community": 0,
+      "community_label": "README & Setup"
+    },
+    {
+      "id": "agent_curator_project",
+      "label": "AgentCurator",
+      "file_type": "document",
+      "community": 1,
+      "community_label": "Frontend (Manifest V3)"
+    },
+    {
+      "id": "chrome_extension_frontend",
+      "label": "Chrome Extension (Manifest V3)",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "side_panel",
+      "label": "Side Panel (Orchestrator & UI)",
+      "file_type": "document",
+      "community": 3,
+      "community_label": "Project Architecture"
+    },
+    {
+      "id": "sidepanel_js",
+      "label": "sidepanel.js",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "background_js",
+      "label": "background.js",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "python_mcp_backend",
+      "label": "Python MCP Server (FastMCP)",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "fetch_tech_news_tool",
+      "label": "fetch_tech_news",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "manage_local_library_tool",
+      "label": "manage_local_library",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "render_prefab_dashboard_tool",
+      "label": "render_prefab_dashboard",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "saved_articles_json",
+      "label": "saved_articles.json",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "prefab_ui",
+      "label": "Prefab UI Components",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "gemini_api",
+      "label": "Google Gemini API",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "hn_algolia_api",
+      "label": "Hacker News Algolia API",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "cors_middleware",
+      "label": "CORS Middleware",
+      "file_type": "document",
+      "community": 3,
+      "community_label": "Project Architecture"
+    },
+    {
+      "id": "tool_chaining_pattern",
+      "label": "Tool Chaining",
+      "file_type": "rationale",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "iframe_srcdoc_strategy",
+      "label": "iframe srcdoc Rendering Strategy",
+      "file_type": "rationale",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "deduplication_logic",
+      "label": "URL-based Deduplication",
+      "file_type": "rationale",
+      "community": 3,
+      "community_label": "Project Architecture"
+    },
+    {
+      "id": "api_fallback_pattern",
+      "label": "API Fallback to Local Storage",
+      "file_type": "rationale",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "dynamic_tool_binding",
+      "label": "Dynamic Tool Binding via MCP",
+      "file_type": "rationale",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "python_3_14",
+      "label": "Python 3.14",
+      "file_type": "document",
+      "community": 3,
+      "community_label": "Project Architecture"
+    },
+    {
+      "id": "fastmcp",
+      "label": "FastMCP",
+      "file_type": "document",
+      "community": 1,
+      "community_label": "Frontend (Manifest V3)"
+    },
+    {
+      "id": "uvicorn",
+      "label": "uvicorn",
+      "file_type": "document",
+      "community": 1,
+      "community_label": "Frontend (Manifest V3)"
+    },
+    {
+      "id": "pnpm",
+      "label": "pnpm",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "mcp_protocol",
+      "label": "MCP Protocol (tools/list, tools/call)",
+      "file_type": "document",
+      "community": 3,
+      "community_label": "Project Architecture"
+    },
+    {
+      "id": "sse_transport",
+      "label": "Server-Sent Events (SSE) Transport",
+      "file_type": "document",
+      "community": 2,
+      "community_label": "Backend Tools & API"
+    },
+    {
+      "id": "localhost_8000",
+      "label": "localhost:8000",
+      "file_type": "document",
+      "community": 3,
+      "community_label": "Project Architecture"
+    }
+  ],
+  "links": [
+    {
+      "source": "agent_curator_project",
+      "target": "chrome_extension_frontend",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "agent_curator_project",
+      "target": "python_mcp_backend",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "chrome_extension_frontend",
+      "target": "side_panel",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "side_panel",
+      "target": "sidepanel_js",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "side_panel",
+      "target": "background_js",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "sidepanel_js",
+      "target": "gemini_api",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "sidepanel_js",
+      "target": "python_mcp_backend",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "sidepanel_js",
+      "target": "dynamic_tool_binding",
+      "relation": "rationale_for",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "fetch_tech_news_tool",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "manage_local_library_tool",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "render_prefab_dashboard_tool",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "cors_middleware",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "fetch_tech_news_tool",
+      "target": "hn_algolia_api",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "fetch_tech_news_tool",
+      "target": "api_fallback_pattern",
+      "relation": "rationale_for",
+      "confidence": 1.0
+    },
+    {
+      "source": "manage_local_library_tool",
+      "target": "saved_articles_json",
+      "relation": "shares_data_with",
+      "confidence": 1.0
+    },
+    {
+      "source": "manage_local_library_tool",
+      "target": "deduplication_logic",
+      "relation": "rationale_for",
+      "confidence": 1.0
+    },
+    {
+      "source": "render_prefab_dashboard_tool",
+      "target": "prefab_ui",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "render_prefab_dashboard_tool",
+      "target": "iframe_srcdoc_strategy",
+      "relation": "rationale_for",
+      "confidence": 1.0
+    },
+    {
+      "source": "tool_chaining_pattern",
+      "target": "fetch_tech_news_tool",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "tool_chaining_pattern",
+      "target": "manage_local_library_tool",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "tool_chaining_pattern",
+      "target": "render_prefab_dashboard_tool",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "api_fallback_pattern",
+      "target": "saved_articles_json",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "dynamic_tool_binding",
+      "target": "gemini_api",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "dynamic_tool_binding",
+      "target": "mcp_protocol",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "python_3_14",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "fastmcp",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "uvicorn",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "chrome_extension_frontend",
+      "target": "pnpm",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "mcp_protocol",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "sse_transport",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "python_mcp_backend",
+      "target": "localhost_8000",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "sidepanel_js",
+      "target": "localhost_8000",
+      "relation": "conceptually_related_to",
+      "confidence": 1.0
+    },
+    {
+      "source": "iframe_srcdoc_strategy",
+      "target": "prefab_ui",
+      "relation": "rationale_for",
+      "confidence": 1.0
+    }
+  ]
+}

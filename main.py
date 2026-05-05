@@ -7,6 +7,8 @@ import httpx
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import HTMLResponse
 from prefab_ui import PrefabApp
 from prefab_ui.components import (
     Badge,
@@ -22,6 +24,7 @@ from prefab_ui.components import (
 )
 
 LIBRARY_FILE = Path(__file__).parent / "saved_articles.json"
+_last_dashboard_html: str = ""
 
 mcp = FastMCP("AgentCurator")
 
@@ -117,6 +120,10 @@ def manage_local_library(action: str, articles: list[dict] | None = None) -> dic
     return {"status": f"Unknown action '{action}'. Use 'check_duplicates' or 'save_new'."}
 
 
+async def dashboard_handler(request: Request) -> HTMLResponse:
+    return HTMLResponse(_last_dashboard_html or "<h1>No dashboard yet</h1>")
+
+
 @mcp.tool()
 def render_prefab_dashboard(cards: list[dict]) -> str:
     """Compile curated articles into a self-contained Prefab HTML dashboard.
@@ -124,11 +131,13 @@ def render_prefab_dashboard(cards: list[dict]) -> str:
     Each card should have: title, url, points, ai_summary (optional).
     Returns a complete HTML page using prefab-ui components.
     """
+    global _last_dashboard_html
     if not cards:
         with PrefabApp() as app:
             Heading("📰 AgentCurator Dashboard")
             Span("No articles to display.")
-        return app.html()
+        _last_dashboard_html = app.html()
+        return _last_dashboard_html
 
     with PrefabApp() as app:
         Heading("📰 AgentCurator Dashboard")
@@ -149,8 +158,12 @@ def render_prefab_dashboard(cards: list[dict]) -> str:
                         if summary:
                             Span(summary, css_class="text-sm text-muted-foreground mt-2 block")
 
-    return app.html()
+    _last_dashboard_html = app.html()
+    return _last_dashboard_html
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000, middleware=_cors_middleware)
+    import uvicorn
+    app = mcp.http_app(transport="streamable-http", middleware=_cors_middleware)
+    app.add_route("/dashboard", dashboard_handler)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

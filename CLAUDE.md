@@ -37,19 +37,23 @@ Runs on `http://localhost:8000`. FastMCP auto-exposes tools via SSE + HTTP POST.
 ## Setup & Commands
 
 ```bash
-# Backend
+# Backend — one-time setup
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .          # installs fastmcp, httpx, prefab-ui, uvicorn
 
-python main.py            # starts server at http://localhost:8000 (streamable-http transport)
+# Backend — run server
+python main.py            # http://localhost:8000 (streamable-http transport)
 
-# Tests
-pytest                    # unit tests: file CRUD, deduplication, API fallback mock
+# Backend — verify server connectivity
+python test_mcp.py        # async Streamable-HTTP client test → lists tools from running server
+
+# Backend — run tests (when implemented)
+pytest                    # unit tests for file CRUD, deduplication, API fallback
 
 # Frontend
+# pnpm install                    # when manifest.json + sidepanel.html created
 # Load unpacked extension from chrome://extensions/
-# pnpm for any frontend build steps (TBD)
 ```
 
 ## Demo Sequence (must be demonstrable)
@@ -63,3 +67,102 @@ User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("chec
 - Tool returns are uniform `dict` or `list[dict]` — no mixed `str|list` unions
 - `fetch_tech_news` fallback prepends `{"status": "..."}` sentinel to result list — never raises
 - Python version pinned to 3.14 (`.python-version`)
+
+## Project Layout
+
+```
+agent_curator/
+├── main.py                    # FastMCP server + 3 tools (fetch, manage, render)
+├── test_mcp.py               # Async Streamable-HTTP client test
+├── saved_articles.json        # Local article library (auto-created on first save)
+├── pyproject.toml             # Python dependencies
+├── .python-version            # Python 3.14 pin
+├── CLAUDE.md                  # This file
+├── README.md                  # Quick start guide
+├── PRD.md                     # Complete spec + acceptance criteria
+├── graphify-out/              # Knowledge graph (run `graphify update .` after code changes)
+└── [FRONTEND TBD]
+    ├── manifest.json          # Extension metadata
+    ├── sidepanel.html         # Side panel UI template
+    ├── sidepanel.js           # Gemini orchestrator + tool proxy
+    ├── background.js          # Service worker (open panel on icon click)
+    └── package.json / pnpm-lock.yaml
+```
+
+## Code Patterns
+
+**Backend (main.py):**
+- `@mcp.tool()` decorator registers functions as MCP tools auto-exposed via `/mcp` endpoint
+- Tool docstrings become Gemini function descriptions
+- `_load_library()` / `_save_library()` abstract JSON read/write
+- Fallback pattern: catch exception → return cached data + status sentinel (never raise)
+
+**Tool Return Schemas:**
+- `fetch_tech_news`: `[{title, url, points}, ...]` or `[{status}, {title, url, points}, ...]` on fallback
+- `manage_local_library`: `{status, articles?}` dict
+- `render_prefab_dashboard`: HTML string (complete self-contained page)
+
+**Frontend (TBD):**
+- Init: `POST /mcp tools/list` → parse + register with Gemini
+- Tool call: Gemini requests tool → `POST /mcp tools/call` → feed result back to Gemini
+- Final render: `<iframe srcdoc={render_prefab_dashboard result}>`
+
+## Testing & Verification
+
+**Manual Server Test (Streamable-HTTP):**
+```bash
+# Terminal 1: Start backend
+python main.py
+
+# Terminal 2: Run connectivity test
+python test_mcp.py
+# Output: lists all 3 tools (fetch_tech_news, manage_local_library, render_prefab_dashboard)
+```
+
+**Integration Test (curl):**
+```bash
+# MCP tools/list
+curl -X POST http://localhost:8000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
+
+# MCP tools/call (fetch_tech_news)
+curl -X POST http://localhost:8000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+    "params": {
+      "name": "fetch_tech_news",
+      "arguments": {"query": "rust", "limit": 5}
+    }
+  }'
+```
+
+**Unit Tests (pytest — when implemented):**
+- Verify `manage_local_library` deduplicates by URL
+- Mock Algolia API to test `fetch_tech_news` fallback
+- Verify `render_prefab_dashboard` returns valid HTML
+
+## Troubleshooting
+
+**"Connection refused" on test_mcp.py:**
+- Ensure `python main.py` is running in another terminal on port 8000
+- Check firewall: `lsof -i :8000` should show uvicorn listening
+
+**CORS errors in Chrome Extension:**
+- CORS middleware is configured with `allow_origins=["*"]` in main.py
+- Verify `mcp-protocol-version` and `mcp-session-id` headers in requests
+
+**saved_articles.json doesn't exist:**
+- It's auto-created on first `manage_local_library("save_new")` call
+- Safe to delete; system will regenerate it
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
