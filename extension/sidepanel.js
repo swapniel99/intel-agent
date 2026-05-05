@@ -409,7 +409,10 @@ $runBtn.addEventListener("click", async () => {
 });
 
 $promptInput.addEventListener("keydown", e => {
-  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $runBtn.click();
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    $runBtn.click();
+  }
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
