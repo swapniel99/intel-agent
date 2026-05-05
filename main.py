@@ -115,6 +115,11 @@ _TOPIC_PALETTES: dict[str, dict] = {
     "data":     {"emoji": "🗄️", "hue": 150, "bg": "#071a0e", "card": "#0d2816", "fg": "#c8f0d4", "muted": "#6bbf80", "border": "#1a402a"},
     "game":     {"emoji": "🎮", "hue": 45,  "bg": "#1a1007", "card": "#28180d", "fg": "#f0e0c8", "muted": "#bfa06b", "border": "#40300d"},
     "crypto":   {"emoji": "⛓️", "hue": 55,  "bg": "#1a1407", "card": "#28200d", "fg": "#f0eac8", "muted": "#bfae6b", "border": "#403810"},
+    "hardware": {"emoji": "🔧", "hue": 30,  "bg": "#1a0f07", "card": "#281808", "fg": "#f0dcc8", "muted": "#bf8c6b", "border": "#40250d"},
+    "linux":    {"emoji": "🐧", "hue": 240, "bg": "#07081a", "card": "#0d1028", "fg": "#c8caf0", "muted": "#6b6ebf", "border": "#1a1c40"},
+    "science":  {"emoji": "🔬", "hue": 165, "bg": "#071a12", "card": "#0d281c", "fg": "#c8f0de", "muted": "#6bbf96", "border": "#1a4030"},
+    "devtools": {"emoji": "🛠️", "hue": 185, "bg": "#07171a", "card": "#0d2428", "fg": "#c8eef0", "muted": "#6bb8bf", "border": "#1a3840"},
+    "infra":    {"emoji": "🏗️", "hue": 215, "bg": "#07101a", "card": "#0d1a2a", "fg": "#c8d8f0", "muted": "#6b90bf", "border": "#1a2a40"},
 }
 _DEFAULT_META = {"emoji": "📰", "hue": 220, "bg": "#0f1117", "card": "#1a2033", "fg": "#e2e8f0", "muted": "#9ca3af", "border": "#1e2535"}
 
@@ -126,8 +131,10 @@ def render_prefab_dashboard(cards: list[dict], topic: str = "tech", theme_key: s
     Each card should have: title, url, points, ai_summary (optional).
     topic: the full search subject string (e.g. 'Local LLMs', 'Rust async').
     theme_key: pick the single best match for the topic from this exact list:
-        medical, security, rust, python, ai, web, cloud, data, game, crypto, default
-    Examples: pytorch→ai, kubernetes→cloud, solidity→crypto, medgemma→medical, nextjs→web, golang→default.
+        medical, security, rust, python, ai, web, cloud, data, game, crypto,
+        hardware, linux, science, devtools, infra, default
+    Examples: pytorch→ai, kubernetes→infra, solidity→crypto, medgemma→medical, nextjs→web,
+        risc-v→hardware, kernel→linux, crispr→science, neovim→devtools, postgres→infra, golang→devtools.
     display_title: a short, well-capitalised heading for the dashboard (e.g. 'AI Investments', 'Local LLMs', 'Rust Async Runtime').
         Capitalise acronyms correctly: AI, LLM, SQL, AWS, GCP, API, ML, UI, CSS, HTML, JS, TS, DB.
     Returns {status, topic, theme, cards} for the client to render.
