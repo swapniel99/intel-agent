@@ -29,15 +29,16 @@ graph TD
         FastMCP --> T1[fetch_tech_news]
         FastMCP --> T2[manage_local_library]
         FastMCP --> T3[render_prefab_dashboard]
-        T1 --> HN[Hacker News API]
+        T1 --> HN[Hacker News / Dev.to / Reddit]
         T2 --> JSON[(saved_articles.json)]
-        T3 --> Prefab[Prefab UI / Charts]
+        T3 --> Cache[_LAST_DASHBOARD_HTML]
     end
 
     Gemini -- Dynamic Grounding --> Google[Google Search]
     Gemini -- Tool Call --> FastMCP
-    FastMCP -- Result --> Extension
-    Extension -- Render --> Dashboard{{Interactive Dashboard}}
+    FastMCP -- status: dashboard_ready --> Extension
+    Extension -- GET /dashboard?theme=... --> Cache
+    Cache -- HTML Page --> Dashboard{{iframe Dashboard}}
 ```
 
 ---
