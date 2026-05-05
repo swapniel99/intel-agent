@@ -248,6 +248,7 @@ def render_prefab_dashboard(
     theme_key: str = "default",
     display_title: str = "",
     chart: dict | None = None,
+    ai_answer: str = "",
 ) -> dict:
     """
     Compile curated articles and data into a professional dashboard.
@@ -255,6 +256,7 @@ def render_prefab_dashboard(
     Each card: {title, url, points, source, ai_summary: "MUST be a 1-sentence executive summary"}.
     topic: pass the user's search subject verbatim (e.g. 'Local LLMs').
     theme_key: pick best match (ai, security, rust, python, devtools, infra, etc.).
+    ai_answer: your full text response to the user (2-3 sentences). ALWAYS populate this — it is displayed in the dashboard instead of the chat panel.
 
     CARDS:
     - If no chart, ALWAYS include 3-5 article cards.
@@ -289,6 +291,11 @@ def render_prefab_dashboard(
     with app:
         with Column():
             H2(heading)
+
+            if ai_answer:
+                with Card():
+                    with CardContent():
+                        Markdown(ai_answer)
 
             if chart and chart.get("type") in _CHART_REGISTRY:
                 ctype = chart["type"]

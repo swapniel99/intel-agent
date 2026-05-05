@@ -20,8 +20,6 @@ const $apiKeyInput = document.getElementById("api-key-input");
 const $mcpUrlInput = document.getElementById("mcp-url-input");
 const $saveSettingsBtn = document.getElementById("save-settings-btn");
 const $keyStatus = document.getElementById("key-status");
-const $geminiSection = document.getElementById("gemini-section");
-const $geminiContent = document.getElementById("gemini-content");
 const $resetBtn = document.getElementById("reset-btn");
 
 let mcpTools = [];
@@ -127,7 +125,6 @@ function mcpToolsToFunctionDeclarations(tools) {
 
 async function runAgent(userPrompt) {
   setStatus("Running agent…");
-  clearGemini();
   $dashboardFrame.style.display = "none";
   $dashboardFrame.src = "about:blank";
   $emptyState.style.display = "none";
@@ -156,9 +153,9 @@ Intent classification:
 
 Rules (CRITICAL):
 - ALWAYS call 'render_prefab_dashboard' at the end of EVERY turn. It is MANDATORY.
-- Every turn MUST result in BOTH a short text response AND a dashboard rendering.
+- Put your complete response to the user in the 'ai_answer' parameter of render_prefab_dashboard. Do NOT emit text outside of tool calls — the dashboard is the only output surface.
 - ALWAYS include a chart when data has numbers, percentages, or stats. No exceptions.
-- Text responses: 2-3 sentences max prose only. No code blocks.
+- ai_answer: 2-3 sentences max, prose only, no code blocks.
 `;
 
   const MAX_TURNS = 12;
@@ -196,8 +193,6 @@ Rules (CRITICAL):
     contents.push({ role: "model", parts });
 
     const toolCalls = response.functionCalls;
-    const responseText = parts.filter(p => p.text).map(p => p.text).join("");
-    if (responseText) appendGemini(responseText);
 
     if (!toolCalls || toolCalls.length === 0) {
       setStatus("Done.", "success");
@@ -239,34 +234,6 @@ Rules (CRITICAL):
 function setStatus(msg, type = "") {
   $status.textContent = msg;
   $status.className = type;
-}
-
-function renderMarkdown(src) {
-  const esc = src
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  return esc
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    .replace(/\n{2,}/g, "</p><p>")
-    .replace(/\n/g, "<br>");
-}
-
-function appendGemini(text) {
-  const el = document.createElement("div");
-  el.className = "gemini-entry";
-  el.innerHTML = `<p>${renderMarkdown(text.trim())}</p>`;
-  $geminiContent.appendChild(el);
-  $geminiSection.classList.add("visible");
-  $geminiSection.scrollTop = $geminiSection.scrollHeight;
-}
-
-function clearGemini() {
-  $geminiContent.innerHTML = "";
-  $geminiSection.classList.remove("visible");
 }
 
 function renderDashboard() {
@@ -326,7 +293,6 @@ function loadSettings() {
 async function resetConnection() {
   mcpSessionId = null;
   setStatus("Resetting connection…");
-  clearGemini();
   $dashboardFrame.style.display = "none";
   $emptyState.style.display = "flex";
   $runBtn.disabled = true;
