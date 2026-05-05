@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Options Page** (`extension/options.html` / `options.js`) for one-time Gemini API key setup
 - `sidepanel.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
 - Dashboard rendering: final tool result (`render_prefab_dashboard`) → HTML string injected into `<iframe src="http://localhost:8000/dashboard">` (not `srcdoc` — avoids CSP issues with Prefab's CDN chunks)
-- Analytics rendering: `render_analytics_chart` result injected into dedicated `<div id="chart-root">` 
+- Analytics rendering: `render_analytics_chart` result injected into dedicated `<div id="chart-root">`
 - `background.js` opens side panel on icon click via `chrome.sidePanel.open`
 - `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
 - Gemini API key stored in `chrome.storage.local`, configured via options page
@@ -49,10 +49,10 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 uv sync                   # installs fastmcp, httpx, prefab-ui, uvicorn from uv.lock
 
 # Backend — run server
-python main.py            # http://localhost:8000 (streamable-http transport)
+./.venv/bin/python main.py            # http://localhost:8000 (streamable-http transport)
 
 # Backend — verify server connectivity
-python test_mcp.py        # async Streamable-HTTP client test → lists tools from running server
+./.venv/bin/python test_mcp.py        # async Streamable-HTTP client test → lists tools from running server
 
 # Backend — run tests (when implemented)
 pytest
@@ -76,6 +76,7 @@ pytest
 - MCP session auto-recovery: `sidepanel.js` retries on session loss, re-initializes `mcp-session-id` transparently
 - Theme: global dark/light mode toggle in side panel UI (commit 8869476), state in `chrome.storage.local`
 - Theme matching: Gemini must select best-match theme from exact list (medical, security, rust, python, ai, web, cloud, data, game, crypto, hardware, linux, science, devtools, infra, default)
+- Python environment: **Mandatory** use of `./.venv/bin/python`. Always check for `.venv/` before running any command.
 - Python version pinned to 3.14 (`.python-version`)
 - Prefab dashboard rendering happens client-side (JS), not server-side HTML generation
 

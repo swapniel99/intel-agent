@@ -23,6 +23,7 @@ const $saveSettingsBtn = document.getElementById("save-settings-btn");
 const $keyStatus = document.getElementById("key-status");
 const $geminiSection = document.getElementById("gemini-section");
 const $geminiContent = document.getElementById("gemini-content");
+const $resetBtn = document.getElementById("reset-btn");
 
 let mcpTools = [];
 let geminiApiKey = "";
@@ -146,28 +147,26 @@ Current Date and Time: ${now}
 Pick tools based on the user's intent.
 
 Intent classification:
-- ARTICLE_CURATION: user wants a list/feed/digest of articles.
-  - Use 'fetch_tech_news' as the PRIMARY tool for tech trends, startups, and developer community discussions.
-  - Use Built-in Google Search only for general news, factual specifications, or non-tech topics.
-  → manage_local_library(check_duplicates) → generate a concise (1-sentence) summary for each novel article → manage_local_library(save_new) → render_prefab_dashboard
-- TREND_ANALYSIS: user asks about trends/comparisons/visualization.
-  - Gather data via fetch_tech_news or Google Search.
-  - For MULTIVARIATE data (multiple metrics over time/categories), use:
-    chart={type, title, data: [{label, metric1, metric2}], series: [{data_key: "metric1", label: "Metric 1"}, {data_key: "metric2", label: "Metric 2"}]}
-  - For SIMPLE data, use: chart={type, title, labels, values}
-  → generate a concise summary of findings → render_prefab_dashboard
-- COMBINED: articles + chart in one render_prefab_dashboard call (pass cards AND chart).
+- HYBRID_RESEARCH: latest info + saved knowledge.
+  → manage_local_library(search) → fetch_tech_news OR Google Search → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
+- ARTICLE_CURATION: list/feed/digest of new articles.
+  → fetch_tech_news → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
+- LIBRARY_MANAGEMENT: browse, search, or clean local collection.
+  - Use 'list_all', 'search', 'delete', or 'update' as needed.
+  → render_prefab_dashboard
+- TREND_ANALYSIS: comparisons and data visualization.
+  - Gather data → PROACTIVELY identify quantitative metrics (counts, shares, trends) → include a 'chart' in the final dashboard → render_prefab_dashboard
 
 Rules (CRITICAL):
 - ALWAYS call 'render_prefab_dashboard' at the end of EVERY turn. It is MANDATORY.
 - Every turn MUST result in BOTH a short text response AND a dashboard rendering.
-- If you have no news/data, render a dashboard with an empty 'cards' list and a 'topic' explaining why (e.g., "No news found for [Topic]").
+- PROACTIVELY extract numbers, percentages, or points to generate a chart whenever the data allows.
+- If no data is found, render a dashboard with an empty 'cards' list and a 'topic' explaining why.
 - NEVER end a turn without calling 'render_prefab_dashboard'.
-- MERGE results from both internet tools when used together.
-- For MULTIVARIATE data: chart={type, title, data, series, x_axis}.
-- For SIMPLE data: chart={type, title, labels, values}.
+- For Hybrid Research, MERGE results from both local search and internet tools into the 'cards' list.
 - If NO chart is present, ALWAYS include 3-5 relevant article cards.
-- Text responses: 2-3 sentences max prose only. No code blocks, no structured data.
+- Refer to tool descriptions for mandatory summary lengths and chart data schemas.
+- Text responses: 2-3 sentences max prose only. No code blocks.
 - For render_prefab_dashboard: pass user's search subject verbatim as topic.
 `;
 
@@ -348,6 +347,19 @@ function loadSettings() {
     checkServer();
   });
 }
+
+async function resetConnection() {
+  mcpSessionId = null;
+  setStatus("Resetting connection…");
+  clearLog();
+  clearGemini();
+  $dashboardFrame.style.display = "none";
+  $emptyState.style.display = "flex";
+  $runBtn.disabled = true;
+  await checkServer();
+}
+
+$resetBtn.addEventListener("click", resetConnection);
 
 $settingsBtn.addEventListener("click", () => {
   const visible = $settingsPanel.classList.toggle("visible");

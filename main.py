@@ -14,7 +14,7 @@ from starlette.responses import HTMLResponse
 from prefab_ui import PrefabApp
 from prefab_ui.components.charts import (
     AreaChart, BarChart, ChartSeries, LineChart, PieChart,
-    RadarChart, ScatterChart, Sparkline, RadialChart,
+    RadarChart, RadialChart,
 )
 from prefab_ui.components.card import Card
 from prefab_ui.components.column import Column
@@ -25,8 +25,8 @@ from prefab_ui.components.typography import H2, H3, Muted
 
 _CHART_REGISTRY = {
     "bar": BarChart, "line": LineChart, "pie": PieChart,
-    "area": AreaChart, "scatter": ScatterChart, "radar": RadarChart,
-    "sparkline": Sparkline, "radial": RadialChart,
+    "area": AreaChart, "radar": RadarChart,
+    "radial": RadialChart,
 }
 
 _LAST_DASHBOARD_HTML: str = ""
@@ -95,13 +95,41 @@ async def fetch_tech_news(query: str, limit: int = 10) -> list[dict]:
 
 
 @mcp.tool()
-def manage_local_library(action: str, articles: list[dict] | None = None) -> dict:
+def manage_local_library(
+    action: str,
+    articles: list[dict] | None = None,
+    article_id: str | None = None,
+    updates: dict | None = None,
+    query: str | None = None
+) -> dict:
     """Read/write the local saved_articles.json library.
 
-    action='check_duplicates': returns {status, articles} with novel articles not yet in library.
-    action='save_new': appends articles (deduped by URL), returns {status} string.
+    action='check_duplicates': Returns {status, articles} with novel articles not yet in library.
+        RECOMMENDED: Call this before 'save_new' to filter results.
+    action='save_new': Appends articles (deduped by URL) to the JSON ledger.
+        REQUIREMENT: Articles must include 'ai_summary' (1-sentence max).
+    action='list_all': Returns the entire archive for browsing.
+    action='search': Filters the library by query (scans titles and summaries).
+    action='update': Modifies a record by article_id (e.g., refreshing a summary).
+    action='delete': Permanently removes a record by article_id.
     """
-    logger.info(f"Tool Call: manage_local_library(action='{action}', article_count={len(articles) if articles else 0})")
+    logger.info(f"Tool Call: manage_local_library(action='{action}', query='{query}', id={article_id})")
+
+    if action == "list_all":
+        library = _load_library()
+        return {"status": f"Found {len(library)} articles.", "articles": library}
+
+    if action == "search":
+        if not query:
+            return {"status": "query is required for 'search' action.", "articles": []}
+        library = _load_library()
+        q = query.lower()
+        matches = [
+            a for a in library
+            if q in a.get("title", "").lower() or q in a.get("ai_summary", "").lower()
+        ]
+        return {"status": f"Found {len(matches)} matches for '{query}'.", "articles": matches}
+
     if action == "check_duplicates":
         if not articles:
             return {"status": "No articles provided.", "articles": []}
@@ -131,7 +159,33 @@ def manage_local_library(action: str, articles: list[dict] | None = None) -> dic
         _save_library(library + new_articles)
         return {"status": f"{skipped} duplicates skipped. {len(new_articles)} new articles saved."}
 
-    return {"status": f"Unknown action '{action}'. Use 'check_duplicates' or 'save_new'."}
+    if action == "update":
+        if not article_id or not updates:
+            return {"status": "article_id and updates are required for 'update' action."}
+        library = _load_library()
+        found = False
+        for a in library:
+            if a["id"] == article_id:
+                a.update(updates)
+                found = True
+                break
+        if found:
+            _save_library(library)
+            return {"status": f"Article {article_id} updated successfully."}
+        return {"status": f"Article {article_id} not found."}
+
+    if action == "delete":
+        if not article_id:
+            return {"status": "article_id is required for 'delete' action."}
+        library = _load_library()
+        initial_len = len(library)
+        library = [a for a in library if a["id"] != article_id]
+        if len(library) < initial_len:
+            _save_library(library)
+            return {"status": f"Article {article_id} deleted successfully."}
+        return {"status": f"Article {article_id} not found."}
+
+    return {"status": f"Unknown action '{action}'. Use 'check_duplicates', 'save_new', 'list_all', 'update', or 'delete'."}
 
 
 _TOPIC_PALETTES: dict[str, str] = {
@@ -150,33 +204,33 @@ def render_prefab_dashboard(
     display_title: str = "",
     chart: dict | None = None,
 ) -> dict:
-    """The FINAL STEP for any research or data retrieval task.
-    Compile curated articles (and optional chart) into a professional Prefab dashboard.
+    """
+    Compile curated articles and data into a professional dashboard.
 
-    ONLY call this tool ONCE at the very end of your research. DO NOT call it multiple times.
-
-    Each card: {title, url, points, ai_summary: "mandatory 1-sentence summary"}.
+    Each card: {title, url, points, ai_summary: "MUST be a 1-sentence executive summary"}.
     topic: full search subject (e.g. 'Local LLMs').
-    theme_key: pick best match from: medical, security, rust, python, ai, web,
-        cloud, data, game, crypto, hardware, linux, science, devtools, infra, default.
-    display_title: short heading (capitalise AI, LLM, SQL, AWS, GCP, API, ML, UI, CSS, HTML, JS, TS, DB).
+    theme_key: pick best match (ai, security, rust, python, devtools, infra, etc.).
 
-    CHART GUIDELINES:
-    - ONLY include a chart if the data is quantitative (numbers, percentages, shares).
-    - If data is purely qualitative (news titles, opinions), set chart=None.
-    - pie: Use for Market Share, Proportions, or Percentage distributions.
-    - line/area: Use for Trends over time or sequential data.
-    - bar: Use for Comparisons between discrete categories (e.g., points, counts).
-    - radar: Use for Multi-variable comparisons (e.g., feature sets).
-    - chart object: {type, title, data, series, x_axis}. 
-      - data: list of dicts (rows).
-      - series: list of {data_key, label}.
-      - x_axis: key for labels (default "label").
-      - legacy format {labels, values} also supported.
+    CHART SELECTION LOGIC:
+    - ONLY include a chart for quantitative data (numbers/percentages).
+    - type: ['pie', 'bar', 'line', 'area', 'radar', 'radial'].
+    - pie/bar/line/area: Use SIMPLE format (labels + values). 'area' is best for volume trends.
+    - radar: Use MULTIVARIATE format (data + series).
+    - radial: Use MULTIVARIATE format to show scores for a single subject.
+    
+    DATA FORMATS (CRITICAL):
+    - SIMPLE: chart={type, title, labels: ["A", "B"], values: [10, 20]} (Auto-converts to 'label' and 'value' keys)
+    - MULTIVARIATE: chart={type, title, data: [{label: "Speed", val: 10}, {label: "Power", val: 20}], series: [{data_key: "val", label: "Metric"}]}
+    - RADAR/RADIAL: Use 'label' in the data objects for the spoke/axis names.
 
-    Returns {status} — the Chrome Extension will automatically render the dashboard in the side panel.
+    Returns {status} — the UI will automatically render in the side panel.
     """
     global _LAST_DASHBOARD_HTML
+
+    # Normalize chart type to lowercase for registry lookup
+    if chart and "type" in chart:
+        chart["type"] = chart["type"].lower()
+
     logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', theme='{theme_key}', cards={len(cards)}, chart={chart and chart.get('type')})")
 
     emoji = _TOPIC_PALETTES.get(theme_key, _DEFAULT_EMOJI)
@@ -193,7 +247,7 @@ def render_prefab_dashboard(
                 data = chart.get("data", [])
                 series_input = chart.get("series", [])
                 chart_title = chart.get("title", "")
-                
+
                 # Simple/Backward compatibility format
                 if not data and chart.get("labels") and chart.get("values"):
                     labels = chart["labels"]
@@ -204,34 +258,19 @@ def render_prefab_dashboard(
                 if chart_title:
                     H3(chart_title)
 
-                if ctype == "sparkline":
-                    ChartCls(data=chart.get("values", []))
-                elif ctype in ("pie", "radial"):
-                    # Circular charts use a single data_key
+                if ctype in ("pie", "radial"):
                     dk = series_input[0]["data_key"] if series_input else "value"
                     nk = chart.get("x_axis") or "label"
-                    ChartCls(
-                        data=data,
-                        data_key=dk,
-                        name_key=nk,
-                        show_legend=True,
-                    )
-                elif ctype in ("bar", "line", "area", "scatter", "radar"):
+                    ChartCls(data=data, data_key=dk, name_key=nk, show_legend=True)
+                elif ctype == "radar":
                     series = [ChartSeries(**s) for s in series_input]
-                    kwargs = {"data": data, "series": series}
-                    
-                    if ctype == "radar":
-                        kwargs["axis_key"] = chart.get("x_axis") or "label"
-                    else:
-                        kwargs["x_axis"] = chart.get("x_axis") or "label"
-                        if ctype == "scatter":
-                            kwargs["y_axis"] = series[0].data_key if series else "value"
-                    ChartCls(**kwargs)
+                    ChartCls(data=data, series=series, axis_key=chart.get("x_axis") or "label")
+                elif ctype in ("bar", "line", "area"):
+                    series = [ChartSeries(**s) for s in series_input]
+                    ChartCls(data=data, series=series, x_axis=chart.get("x_axis") or "label")
                 else:
-                    ChartCls(
-                        data=data,
-                        series=[ChartSeries(data_key="value", label=chart_title or "Value")],
-                    )
+                    series = [ChartSeries(**s) for s in series_input] if series_input else [ChartSeries(data_key="value", label="Value")]
+                    ChartCls(data=data, series=series)
 
             for c in cards:
                 with Card():
