@@ -1,7 +1,7 @@
 import json
 import uuid
 import logging
-from ddgs import DDGS
+# from ddgs import DDGS
 import urllib.parse
 import re
 from datetime import datetime, timezone
@@ -47,7 +47,7 @@ def _save_library(articles: list[dict]) -> None:
 @mcp.tool()
 async def fetch_tech_news(query: str, limit: int = 10) -> list[dict]:
     """Primary tool for DEVELOPER TRENDS and COMMUNITY DISCUSSION.
-    Use this for: "What's trending in tech?", "What do developers think about X?", 
+    Use this for: "What's trending in tech?", "What do developers think about X?",
     "Latest startup news", or "niche engineering topics".
     Source: Hacker News (Algolia).
     """
@@ -167,27 +167,27 @@ def render_prefab_dashboard(cards: list[dict], topic: str = "tech", theme_key: s
     }
 
 
-@mcp.tool()
-async def search_internet(query: str, limit: int = 5) -> list[dict]:
-    """Primary tool for GENERAL NEWS, FACTUAL INFO, and PRODUCT UPDATES.
-    Use this for: "Is X released yet?", "Latest news about company Y", 
-    "Product features/specs", or broad tech news not specific to developers.
-    Source: DuckDuckGo.
-    """
-    logger.info(f"Tool Call: search_internet(query='{query}', limit={limit})")
-    try:
-        results = []
-        with DDGS() as ddgs:
-            for r in ddgs.text(query, max_results=limit):
-                results.append({
-                    "title": r.get("title", "No Title"),
-                    "url": r.get("href", "#"),
-                    "points": 0,
-                    "snippet": r.get("body", "")
-                })
-        return results
-    except Exception as e:
-        return [{"status": f"Search failed: {str(e)}"}]
+# @mcp.tool()
+# async def search_internet(query: str, limit: int = 5) -> list[dict]:
+#     """Primary tool for GENERAL NEWS, FACTUAL INFO, and PRODUCT UPDATES.
+#     Use this for: "Is X released yet?", "Latest news about company Y",
+#     "Product features/specs", or broad tech news not specific to developers.
+#     Source: DuckDuckGo.
+#     """
+#     logger.info(f"Tool Call: search_internet(query='{query}', limit={limit})")
+#     try:
+#         results = []
+#         with DDGS() as ddgs:
+#             for r in ddgs.text(query, max_results=limit):
+#                 results.append({
+#                     "title": r.get("title", "No Title"),
+#                     "url": r.get("href", "#"),
+#                     "points": 0,
+#                     "snippet": r.get("body", "")
+#                 })
+#         return results
+#     except Exception as e:
+#         return [{"status": f"Search failed: {str(e)}"}]
 
 
 @mcp.tool()

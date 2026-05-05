@@ -17,6 +17,8 @@ const $settingsPanel = document.getElementById("settings-panel");
 const $apiKeyInput = document.getElementById("api-key-input");
 const $saveKeyBtn = document.getElementById("save-key-btn");
 const $keyStatus = document.getElementById("key-status");
+const $geminiSection = document.getElementById("gemini-section");
+const $geminiContent = document.getElementById("gemini-content");
 
 let mcpTools = [];
 let geminiApiKey = "";
@@ -122,6 +124,7 @@ function mcpToolsToFunctionDeclarations(tools) {
 async function runAgent(userPrompt) {
   setStatus("Running agent…");
   clearLog();
+  clearGemini();
   $chartRoot.style.display = "none";
   $chartRoot.innerHTML = "";
   $dashboardRoot.style.display = "none";
@@ -142,11 +145,12 @@ Pick tools based on the user's intent.
 
 Intent classification:
 - ARTICLE_CURATION: user wants a list/feed/digest of articles. 
-  - For simple queries: use the single most relevant tool (HN for trends, Search for facts).
-  - For complex/broad queries: USE BOTH fetch_tech_news AND search_internet to get a broader picture (Facts + Community Sentiment).
+  - Use fetch_tech_news for tech trends/community discussion.
+  - Use Built-in Google Search for general news/product updates.
   → manage_local_library(check_duplicates) → manage_local_library(save_new) → render_prefab_dashboard
 - TREND_ANALYSIS: user asks about trends, comparisons, or data visualization.
-  - USE BOTH tools if comparing "market share" (Search) vs "developer mindshare" (HN).
+  - Use fetch_tech_news for community trends.
+  - Use Built-in Google Search for factual/market trends.
   → render_analytics_chart
 - COMBINED: run full research pipeline + chart + dashboard.
 
@@ -156,6 +160,10 @@ Rules:
 - Only call render_prefab_dashboard if user wants articles displayed.
 - Only call render_analytics_chart if user wants a chart, graph, or trend visualization.
 - For render_prefab_dashboard: pass user's search subject verbatim as topic, pick best theme_key.
+- NEVER emit chart specs, JSON, or data arrays inline in your text response. If chart is needed, you MUST invoke render_analytics_chart tool with the data. Inline JSON output is forbidden.
+- NEVER emit dashboard HTML/markdown inline. Use render_prefab_dashboard tool.
+- Text responses are for short prose summaries only — no code blocks, no structured data.
+- Keep text responses to 2-3 sentences max. Brief commentary only. Data lives in the tool-rendered chart/dashboard, not your text.
 `;
 
   const MAX_TURNS = 12;
@@ -193,11 +201,11 @@ Rules:
     contents.push({ role: "model", parts });
 
     const toolCalls = response.functionCalls;
+    const responseText = response.text;
+    if (responseText) appendGemini(responseText);
 
     if (!toolCalls || toolCalls.length === 0) {
       setStatus("Done.", "success");
-      const text = response.text;
-      if (text) appendLog(`Gemini: ${text}`);
       return;
     }
 
@@ -256,6 +264,34 @@ function appendLog(msg, type = "") {
 
 function clearLog() {
   $log.innerHTML = "";
+}
+
+function renderMarkdown(src) {
+  const esc = src
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return esc
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\n{2,}/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+}
+
+function appendGemini(text) {
+  const el = document.createElement("div");
+  el.className = "gemini-entry";
+  el.innerHTML = `<p>${renderMarkdown(text.trim())}</p>`;
+  $geminiContent.appendChild(el);
+  $geminiSection.classList.add("visible");
+  $geminiSection.scrollTop = $geminiSection.scrollHeight;
+}
+
+function clearGemini() {
+  $geminiContent.innerHTML = "";
+  $geminiSection.classList.remove("visible");
 }
 
 function renderDashboard({ topic, theme, cards }) {

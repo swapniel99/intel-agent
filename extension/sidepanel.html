@@ -179,6 +179,48 @@
     .log-entry.result { color: #34d399; }
     .log-entry.warn { color: #fbbf24; }
 
+    #gemini-section {
+      padding: 10px 16px;
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.5;
+      max-height: 180px;
+      overflow-y: auto;
+      border-bottom: 1px solid #1e2535;
+      background: #0d1120;
+      display: none;
+    }
+
+    #gemini-section.visible { display: block; }
+
+    #gemini-section .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .gemini-entry {
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed #1e2535;
+    }
+    .gemini-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .gemini-entry p { margin: 0 0 6px 0; }
+    .gemini-entry p:last-child { margin-bottom: 0; }
+    .gemini-entry code {
+      background: #1a2033;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 11px;
+      color: #fbbf24;
+    }
+    .gemini-entry strong { color: #f1f5f9; font-weight: 600; }
+    .gemini-entry em { color: #94a3b8; }
+    .gemini-entry a { color: #60a5fa; text-decoration: underline; }
+
     #prefab-container {
       flex: 1;
       position: relative;
@@ -237,6 +279,11 @@
     <div id="status-bar">Checking server…</div>
 
     <div id="log-section"></div>
+
+    <div id="gemini-section">
+      <div class="label">Gemini</div>
+      <div id="gemini-content"></div>
+    </div>
 
     <div id="prefab-container">
       <div id="empty-state">
