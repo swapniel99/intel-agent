@@ -63,31 +63,76 @@ def _save_library(articles: list[dict]) -> None:
     LIBRARY_FILE.write_text(json.dumps(articles, indent=2))
 
 
-@mcp.tool()
-async def fetch_tech_news(query: str, limit: int = 10) -> list[dict]:
-    """Primary tool for DEVELOPER TRENDS and COMMUNITY DISCUSSION.
-    Use this for: "What's trending in tech?", "What do developers think about X?",
-    "Latest startup news", or "niche engineering topics".
-    Source: Hacker News (Algolia).
-    """
-    logger.info(f"Tool Call: fetch_tech_news(query='{query}', limit={limit})")
+async def _fetch_hn(query: str, limit: int) -> list[dict]:
+    """Fetch from Hacker News (Algolia)."""
     url = f"https://hn.algolia.com/api/v1/search?query={query}&hitsPerPage={limit}"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+    hits = resp.json().get("hits", [])
+    return [
+        {"title": h.get("title", ""), "url": h.get("url", ""), "points": h.get("points", 0), "source": "hn"}
+        for h in hits if h.get("url")
+    ]
+
+
+async def _fetch_dev(query: str, limit: int) -> list[dict]:
+    """Fetch from Dev.to."""
+    url = f"https://dev.to/api/articles?tag={query}&per_page={limit}"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+    articles = resp.json()
+    return [
+        {"title": a.get("title", ""), "url": a.get("url", ""), "points": a.get("positive_reactions_count", 0), "source": "dev"}
+        for a in articles
+    ]
+
+
+async def _fetch_reddit(query: str, limit: int) -> list[dict]:
+    """Fetch from Reddit."""
+    url = f"https://www.reddit.com/r/all/search.json?q={query}&limit={limit}"
+    headers = {"User-Agent": "ResearchAgent/1.0"}
+    async with httpx.AsyncClient(timeout=10, headers=headers) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+    posts = resp.json().get("data", {}).get("children", [])
+    return [
+        {"title": p["data"].get("title", ""), "url": p["data"].get("url", ""), "points": p["data"].get("score", 0), "source": "reddit"}
+        for p in posts if p["data"].get("url")
+    ]
+
+
+@mcp.tool()
+async def fetch_tech_news(query: str, limit: int = 10, source: str = "all") -> list[dict]:
+    """Fetch articles from multiple sources.
+
+    source: 'hn' (Hacker News), 'dev' (Dev.to), 'reddit', or 'all' (combines all sources).
+    Returns: [{title, url, points, source}]
+    """
+    logger.info(f"Tool Call: fetch_tech_news(query='{query}', limit={limit}, source='{source}')")
+
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-        hits = resp.json().get("hits", [])
-        return [
-            {"title": h.get("title", ""), "url": h.get("url", ""), "points": h.get("points", 0)}
-            for h in hits
-            if h.get("url")
-        ]
+        if source == "hn":
+            return await _fetch_hn(query, limit)
+        elif source == "dev":
+            return await _fetch_dev(query, limit)
+        elif source == "reddit":
+            return await _fetch_reddit(query, limit)
+        elif source == "all":
+            per_source = max(1, limit // 3)
+            hn = await _fetch_hn(query, per_source)
+            dev = await _fetch_dev(query, per_source)
+            reddit = await _fetch_reddit(query, per_source)
+            return (hn + dev + reddit)[:limit]
+        else:
+            return [{"status": f"Unknown source '{source}'. Use 'hn', 'dev', 'reddit', or 'all'."}]
     except Exception:
         cached = _load_library()
-        status = {"status": "The internet source is currently unavailable. Displaying previously saved articles from your local storage."}
+        status = {"status": "The internet sources are currently unavailable. Displaying previously saved articles from your local storage."}
         if cached:
             articles = [
-                {"title": a["title"], "url": a["url"], "points": a.get("points", 0)}
+                {"title": a["title"], "url": a["url"], "points": a.get("points", 0), "source": "cache"}
                 for a in cached
             ]
             return [status] + articles
@@ -277,7 +322,10 @@ def render_prefab_dashboard(
                     with Column():
                         with Row():
                             H3(c.get("title", "Untitled"))
+                        with Row():
                             Badge(label=f"▲ {c.get('points', 0) or 0}", variant="info")
+                            if c.get("source"):
+                                Badge(label=c["source"].upper(), variant="secondary")
                         Markdown(f"[Click Here]({c.get('url', '#')})")
                         if c.get("ai_summary"):
                             Muted(c["ai_summary"])

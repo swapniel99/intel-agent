@@ -146,9 +146,9 @@ Pick tools based on the user's intent.
 
 Intent classification:
 - HYBRID_RESEARCH: latest info + saved knowledge.
-  → manage_local_library(search) → fetch_tech_news OR Google Search → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
+  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
 - ARTICLE_CURATION: list/feed/digest of new articles.
-  → fetch_tech_news → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
+  → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
 - LIBRARY_MANAGEMENT: browse, search, or clean local collection.
   - Use 'list_all', 'search', 'delete', or 'update' as needed.
   → render_prefab_dashboard
