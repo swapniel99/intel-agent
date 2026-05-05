@@ -3,6 +3,7 @@ import { GoogleGenAI } from "./genai.js";
 const MCP_URL = "http://localhost:8000/mcp";
 const MODEL = "gemini-3.1-flash-lite-preview";
 const API_KEY_STORAGE = "gemini_api_key";
+const THEME_STORAGE = "theme";
 
 const $dot = document.getElementById("server-dot");
 const $status = document.getElementById("status-bar");
@@ -13,6 +14,7 @@ const $dashboardRoot = document.getElementById("prefab-root");
 const $chartRoot = document.getElementById("chart-root");
 const $emptyState = document.getElementById("empty-state");
 const $settingsBtn = document.getElementById("settings-btn");
+const $themeBtn = document.getElementById("theme-btn");
 const $settingsPanel = document.getElementById("settings-panel");
 const $apiKeyInput = document.getElementById("api-key-input");
 const $saveKeyBtn = document.getElementById("save-key-btn");
@@ -381,6 +383,25 @@ $settingsBtn.addEventListener("click", () => {
   const visible = $settingsPanel.classList.toggle("visible");
   $settingsBtn.classList.toggle("active", visible);
 });
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  $themeBtn.textContent = theme === "dark" ? "🌙" : "☀️";
+}
+
+function loadTheme() {
+  chrome.storage.local.get([THEME_STORAGE], result => {
+    applyTheme(result[THEME_STORAGE] || "dark");
+  });
+}
+
+$themeBtn.addEventListener("click", () => {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  applyTheme(next);
+  chrome.storage.local.set({ [THEME_STORAGE]: next });
+});
+
+loadTheme();
 
 $saveKeyBtn.addEventListener("click", () => {
   const key = $apiKeyInput.value.trim();
