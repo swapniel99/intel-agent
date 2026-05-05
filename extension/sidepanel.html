@@ -137,7 +137,11 @@
       align-items: center;
     }
 
-    #save-key-btn {
+    #settings-panel .setting-group {
+      margin-bottom: 8px;
+    }
+
+    #save-settings-btn {
       background: var(--accent-btn);
       border: none;
       border-radius: 6px;
@@ -145,13 +149,14 @@
       cursor: pointer;
       font-size: 12px;
       font-weight: 500;
-      padding: 8px 14px;
+      padding: 10px 14px;
       white-space: nowrap;
+      margin-top: 4px;
     }
 
-    #save-key-btn:hover { background: var(--accent-btn-hover); }
+    #save-settings-btn:hover { background: var(--accent-btn-hover); }
 
-    #key-status { font-size: 11px; color: var(--ok); min-height: 16px; }
+    #key-status { font-size: 11px; color: var(--ok); min-height: 16px; margin-top: 4px; }
 
     /* ── Main views ── */
     #main-view {
@@ -310,13 +315,19 @@
   </header>
 
   <div id="settings-panel">
-    <div>
+    <div class="setting-group">
       <label for="api-key-input">Gemini API Key</label>
       <div class="row">
         <input id="api-key-input" type="password" placeholder="AIza…" />
-        <button id="save-key-btn">Save</button>
       </div>
     </div>
+    <div class="setting-group">
+      <label for="mcp-url-input">MCP Server URL</label>
+      <div class="row">
+        <input id="mcp-url-input" type="text" placeholder="http://localhost:8000" />
+      </div>
+    </div>
+    <button id="save-settings-btn">Save Settings</button>
     <div id="key-status"></div>
   </div>
 

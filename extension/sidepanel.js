@@ -1,8 +1,9 @@
 import { GoogleGenAI } from "./genai.js";
 
-const MCP_URL = "http://localhost:8000/mcp";
+let MCP_URL = "http://localhost:8000/mcp";
 const MODEL = "gemini-3.1-flash-lite-preview";
 const API_KEY_STORAGE = "gemini_api_key";
+const MCP_SERVER_URL_STORAGE = "mcp_server_url";
 const THEME_STORAGE = "theme";
 
 const $dot = document.getElementById("server-dot");
@@ -12,12 +13,13 @@ const $runBtn = document.getElementById("run-btn");
 const $promptInput = document.getElementById("prompt-input");
 const $dashboardFrame = document.getElementById("prefab-frame");
 const $emptyState = document.getElementById("empty-state");
-const DASHBOARD_URL = "http://localhost:8000/dashboard";
+let DASHBOARD_URL = "http://localhost:8000/dashboard";
 const $settingsBtn = document.getElementById("settings-btn");
 const $themeBtn = document.getElementById("theme-btn");
 const $settingsPanel = document.getElementById("settings-panel");
 const $apiKeyInput = document.getElementById("api-key-input");
-const $saveKeyBtn = document.getElementById("save-key-btn");
+const $mcpUrlInput = document.getElementById("mcp-url-input");
+const $saveSettingsBtn = document.getElementById("save-settings-btn");
 const $keyStatus = document.getElementById("key-status");
 const $geminiSection = document.getElementById("gemini-section");
 const $geminiContent = document.getElementById("gemini-content");
@@ -327,8 +329,8 @@ function initGemini(apiKey) {
   ai = new GoogleGenAI({ apiKey });
 }
 
-function loadApiKey() {
-  chrome.storage.local.get([API_KEY_STORAGE], result => {
+function loadSettings() {
+  chrome.storage.local.get([API_KEY_STORAGE, MCP_SERVER_URL_STORAGE], result => {
     geminiApiKey = result[API_KEY_STORAGE] || "";
     if (geminiApiKey) {
       initGemini(geminiApiKey);
@@ -336,7 +338,14 @@ function loadApiKey() {
     } else {
       setStatus("No API key — click ⚙️ to add one.");
     }
+
+    const serverUrl = result[MCP_SERVER_URL_STORAGE] || "http://localhost:8000";
+    $mcpUrlInput.value = serverUrl;
+    MCP_URL = `${serverUrl.replace(/\/$/, "")}/mcp`;
+    DASHBOARD_URL = `${serverUrl.replace(/\/$/, "")}/dashboard`;
+
     $runBtn.disabled = !geminiApiKey;
+    checkServer();
   });
 }
 
@@ -362,17 +371,28 @@ $themeBtn.addEventListener("click", () => {
   chrome.storage.local.set({ [THEME_STORAGE]: next });
 });
 
-loadTheme();
-
-$saveKeyBtn.addEventListener("click", () => {
+$saveSettingsBtn.addEventListener("click", () => {
   const key = $apiKeyInput.value.trim();
-  if (!key || key.startsWith("•")) return;
-  geminiApiKey = key;
-  initGemini(key);
-  chrome.storage.local.set({ [API_KEY_STORAGE]: key }, () => {
+  const serverUrl = $mcpUrlInput.value.trim() || "http://localhost:8000";
+
+  const settings = {
+    [MCP_SERVER_URL_STORAGE]: serverUrl
+  };
+
+  if (key && !key.startsWith("•")) {
+    geminiApiKey = key;
+    initGemini(key);
+    settings[API_KEY_STORAGE] = key;
     $apiKeyInput.value = "••••••••••••••••";
-    $keyStatus.textContent = "Saved.";
-    $runBtn.disabled = false;
+  }
+
+  const cleanUrl = serverUrl.replace(/\/$/, "");
+  MCP_URL = `${cleanUrl}/mcp`;
+  DASHBOARD_URL = `${cleanUrl}/dashboard`;
+
+  chrome.storage.local.set(settings, () => {
+    $keyStatus.textContent = "Settings saved.";
+    $runBtn.disabled = !geminiApiKey;
     setTimeout(() => { $keyStatus.textContent = ""; }, 2000);
     checkServer();
   });
@@ -406,5 +426,5 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-loadApiKey();
-checkServer();
+loadTheme();
+loadSettings();
