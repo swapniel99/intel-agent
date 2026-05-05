@@ -154,7 +154,7 @@ Intent classification:
 Rules (CRITICAL):
 - ALWAYS call 'render_prefab_dashboard' at the end of EVERY turn. It is MANDATORY.
 - Put your complete response to the user in the 'ai_answer' parameter of render_prefab_dashboard. Do NOT emit text outside of tool calls — the dashboard is the only output surface.
-- ALWAYS include a chart when data has numbers, percentages, or stats. No exceptions.
+- Include a chart ONLY when the user explicitly asks for analysis/comparison/trends OR when the fetched data has meaningful quantitative differences worth visualizing. Pure news/article fetches: NO chart.
 - ai_answer: 2-3 sentences max, prose only, no code blocks.
 `;
 
