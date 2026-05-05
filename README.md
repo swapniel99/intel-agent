@@ -1,14 +1,14 @@
-# 🤖 AgentCurator
+# 🔍 ResearchAgent
 
-> **Precision AI Research Assistant** — A production-ready orchestration of a Chrome Extension Side Panel and a local Python MCP backend.
+> **AI-Powered Research Assistant** — A production-ready orchestration of a Chrome Extension Side Panel and a local Python MCP backend.
 
-AgentCurator bridges the gap between high-level AI reasoning and local system capabilities. It empowers users to fetch trending news, ground facts with Google Search, deduplicate findings against a local JSON ledger, and visualize data through a beautiful, interactive Prefab dashboard.
+ResearchAgent bridges the gap between high-level AI reasoning and local system capabilities. It empowers users to fetch trending news from multiple sources, ground facts with Google Search, manage findings against a local JSON ledger, and visualize data through a beautiful, interactive Prefab dashboard.
 
 ---
 
 ## ✨ Key Features
 
-- **🌐 Hybrid Research:** Seamlessly combines niche community data from **Hacker News** with broad factual grounding via **Google Search** (Dynamic Grounding).
+- **🌐 Multi-Source Research:** Seamlessly fetches from **Hacker News**, **Dev.to**, and **Reddit**, combined with broad factual grounding via **Google Search** (Dynamic Grounding).
 - **📚 Local Memory:** Persistent JSON library (`saved_articles.json`) for article deduplication, full-text search, and historical research tracking.
 - **📊 Dynamic Dashboards:** Automatically generates rich UI dashboards using **Prefab UI** and **Frappe Charts** (Bar, Pie, Line, Area, Radar, Radial).
 - **🧩 MCP Native:** Built on the **Model Context Protocol (FastMCP)** for robust, standardized communication between the LLM and local tools.
@@ -49,8 +49,8 @@ The backend requires Python 3.14+ and `uv` (recommended).
 
 ```bash
 # Clone the repo
-git clone https://github.com/swapniel/agent_curator.git
-cd agent_curator
+git clone https://github.com/swapniel/research-agent.git
+cd research-agent
 
 # Install dependencies using uv
 uv sync
@@ -64,7 +64,7 @@ uv sync
 1. Open Chrome and navigate to `chrome://extensions/`.
 2. Enable **Developer mode** (top right).
 3. Click **Load unpacked** and select the `extension` folder in this repository.
-4. Click the AgentCurator icon in your toolbar to open the **Side Panel**.
+4. Click the ResearchAgent icon in your toolbar to open the **Side Panel**.
 5. Click the gear icon (⚙️) to enter your **Gemini API Key**.
 
 ---
@@ -73,7 +73,7 @@ uv sync
 
 | Tool | Capability | Source/Target |
 |---|---|---|
-| `fetch_tech_news` | Retrieves trending tech discussions and startup news. | Hacker News (Algolia) |
+| `fetch_tech_news` | Retrieves trending tech discussions from multiple sources. | Hacker News, Dev.to, Reddit |
 | `manage_local_library` | Full CRUD on research: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. | `saved_articles.json` |
 | `render_prefab_dashboard` | Compiles research into a rich HTML dashboard. Supports 6 chart types and auto-theme matching. | Prefab UI + Frappe Charts |
 | **Google Search** | (Native) Provides real-time factual grounding for general queries. | Google Search Index |

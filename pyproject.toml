@@ -1,7 +1,7 @@
 [project]
-name = "agent-curator"
+name = "research-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered research assistant with multi-source fetch and MCP orchestration"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AgentCurator** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles, deduplicates them, and renders a curated dashboard.
+**ResearchAgent** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles from multiple sources and renders a curated dashboard.
 
 **Current state:** Backend (`main.py`) and frontend (`extension/`) both complete and functional.
 

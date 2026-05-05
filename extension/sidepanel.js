@@ -139,33 +139,26 @@ async function runAgent(userPrompt) {
   ];
 
   const now = new Date().toLocaleString();
-  const systemInstruction = `You are AgentCurator, an AI research assistant. 
+  const systemInstruction = `You are ResearchAgent, an AI research assistant. 
 Current Date and Time: ${now}
 
 Pick tools based on the user's intent.
 
 Intent classification:
 - HYBRID_RESEARCH: latest info + saved knowledge.
-  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
+  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → MERGE all results → manage_local_library(save_new) → render_prefab_dashboard
 - ARTICLE_CURATION: list/feed/digest of new articles.
   → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
 - LIBRARY_MANAGEMENT: browse, search, or clean local collection.
-  - Use 'list_all', 'search', 'delete', or 'update' as needed.
   → render_prefab_dashboard
 - TREND_ANALYSIS: comparisons and data visualization.
-  - Gather data → PROACTIVELY identify quantitative metrics (counts, shares, trends) → include a 'chart' in the final dashboard → render_prefab_dashboard
+  - Gather data → PROACTIVELY identify quantitative metrics (counts, shares, trends) → include a chart → render_prefab_dashboard
 
 Rules (CRITICAL):
 - ALWAYS call 'render_prefab_dashboard' at the end of EVERY turn. It is MANDATORY.
 - Every turn MUST result in BOTH a short text response AND a dashboard rendering.
-- PROACTIVELY extract numbers, percentages, or points to generate a chart whenever the data allows.
-- If no data is found, render a dashboard with an empty 'cards' list and a 'topic' explaining why.
-- NEVER end a turn without calling 'render_prefab_dashboard'.
-- For Hybrid Research, MERGE results from both local search and internet tools into the 'cards' list.
-- If NO chart is present, ALWAYS include 3-5 relevant article cards.
-- Refer to tool descriptions for mandatory summary lengths and chart data schemas.
+- ALWAYS include a chart when data has numbers, percentages, or stats. No exceptions.
 - Text responses: 2-3 sentences max prose only. No code blocks.
-- For render_prefab_dashboard: pass user's search subject verbatim as topic.
 `;
 
   const MAX_TURNS = 12;

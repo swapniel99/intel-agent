@@ -35,11 +35,11 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger("AgentCurator")
+logger = logging.getLogger("ResearchAgent")
 
 LIBRARY_FILE = Path(__file__).parent / "saved_articles.json"
 
-mcp = FastMCP("AgentCurator")
+mcp = FastMCP("ResearchAgent")
 
 _cors_middleware = [
     Middleware(
@@ -253,8 +253,12 @@ def render_prefab_dashboard(
     Compile curated articles and data into a professional dashboard.
 
     Each card: {title, url, points, source, ai_summary: "MUST be a 1-sentence executive summary"}.
-    topic: full search subject (e.g. 'Local LLMs').
+    topic: pass the user's search subject verbatim (e.g. 'Local LLMs').
     theme_key: pick best match (ai, security, rust, python, devtools, infra, etc.).
+
+    CARDS:
+    - If no chart, ALWAYS include 3-5 article cards.
+    - If no data found, pass empty cards list with topic explaining why.
 
     CHART SELECTION LOGIC:
     - ONLY include a chart for quantitative data (numbers/percentages).
