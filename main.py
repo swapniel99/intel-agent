@@ -158,7 +158,7 @@ def manage_local_library(
     action='update': Modifies a record by article_id (e.g., refreshing a summary).
     action='delete': Permanently removes a record by article_id.
     """
-    logger.info(f"Tool Call: manage_local_library(action='{action}', query='{query}', id={article_id})")
+    logger.info(f"Tool Call: manage_local_library(action='{action}', query='{query}', id={article_id}, updates={updates}, articles_count={len(articles) if articles else 0})")
 
     if action == "list_all":
         library = _load_library()
@@ -233,19 +233,13 @@ def manage_local_library(
     return {"status": f"Unknown action '{action}'. Use 'check_duplicates', 'save_new', 'list_all', 'update', or 'delete'."}
 
 
-_TOPIC_PALETTES: dict[str, str] = {
-    "medical":  "🏥", "security": "🔐", "rust": "🦀", "python": "🐍", "ai": "🤖",
-    "web": "🌐", "cloud": "☁️", "data": "🗄️", "game": "🎮", "crypto": "⛓️",
-    "hardware": "🔧", "linux": "🐧", "science": "🔬", "devtools": "🛠️", "infra": "🏗️",
-}
-_DEFAULT_EMOJI = "📰"
+_DEFAULT_EMOJI = "🔎"
 
 
 @mcp.tool()
 def render_prefab_dashboard(
     cards: list[dict],
     topic: str = "tech",
-    theme_key: str = "default",
     display_title: str = "",
     chart: dict | None = None,
     ai_answer: str = "",
@@ -255,7 +249,6 @@ def render_prefab_dashboard(
 
     Each card: {title, url, points, source, ai_summary: "MUST be a 1-sentence executive summary"}.
     topic: pass the user's search subject verbatim (e.g. 'Local LLMs').
-    theme_key: pick best match (ai, security, rust, python, devtools, infra, etc.).
     ai_answer: your full text response to the user (2-3 sentences). ALWAYS populate this — it is displayed in the dashboard instead of the chat panel.
 
     CARDS:
@@ -282,10 +275,9 @@ def render_prefab_dashboard(
     if chart and "type" in chart:
         chart["type"] = chart["type"].lower()
 
-    logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', theme='{theme_key}', cards={len(cards)}, chart={chart and chart.get('type')})")
+    logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', cards_count={len(cards)}, chart={chart}, ai_answer='{ai_answer[:100]}...')")
 
-    emoji = _TOPIC_PALETTES.get(theme_key, _DEFAULT_EMOJI)
-    heading = f"{emoji} {display_title or topic}"
+    heading = f"{_DEFAULT_EMOJI} {display_title or topic}"
 
     app = PrefabApp()
     with app:
