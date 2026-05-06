@@ -30,24 +30,40 @@ let conversationHistory = [];
 
 // ── MCP helpers ──────────────────────────────────────────────────────────────
 
-async function mcpRequest(method, params = {}) {
+async function mcpRequest(method, params = {}, retries = 2) {
   const headers = {
     "Content-Type": "application/json",
     "Accept": "application/json, text/event-stream",
   };
   if (mcpSessionId) headers["mcp-session-id"] = mcpSessionId;
 
-  let res = await fetch(MCP_URL, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params }),
-  });
+  let lastErr, res;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      res = await Promise.race([
+        fetch(MCP_URL, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params }),
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), 20000)),
+      ]);
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries - 1) {
+        console.warn(`MCP request attempt ${attempt + 1} failed, retrying...`, err.message);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
+  }
+
+  if (!res) throw lastErr;
 
   // Handle server restart / session loss (404 Not Found)
   if (res.status === 404 && mcpSessionId) {
     console.warn("MCP session not found (server likely restarted). Re-initializing...");
     mcpSessionId = null;
-    conversationHistory = [];
     await mcpInitialize(); // Re-initialize connection
 
     // Retry the original request with new session
@@ -137,8 +153,8 @@ async function runAgent(userPrompt) {
 
   const userTurn = { role: "user", parts: [{ text: userPrompt }] };
   conversationHistory.push(userTurn);
-  if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
   const contents = conversationHistory;
+  console.log(`[Agent Init] After push, history length: ${contents.length}, user turns: ${contents.filter(t => t.role === "user").length}`);
 
   const now = new Date().toLocaleString();
   const systemInstruction = `You are IntelAgent, an AI research assistant.
@@ -392,6 +408,7 @@ $runBtn.addEventListener("click", async () => {
   const prompt = $promptInput.value.trim();
   if (!prompt || !geminiApiKey) return;
 
+  console.log(`[Before runAgent] conversationHistory length:`, conversationHistory.length);
   $runBtn.disabled = true;
   try {
     await runAgent(prompt);
@@ -399,6 +416,7 @@ $runBtn.addEventListener("click", async () => {
     conversationHistory.pop();
     setStatus(`Error: ${err.message}`, "error");
   } finally {
+    console.log(`[After runAgent] conversationHistory length:`, conversationHistory.length);
     $runBtn.disabled = false;
   }
 });
