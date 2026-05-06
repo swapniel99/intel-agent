@@ -186,14 +186,18 @@ Intent classification:
   → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
 - LIBRARY_MANAGEMENT: browse, search, or clean local collection.
   → render_prefab_dashboard
-- TREND_ANALYSIS: comparisons and data visualization.
-  - Gather data → PROACTIVELY identify quantitative metrics (counts, shares, trends) → include a chart → render_prefab_dashboard
+- METRICS_ANALYSIS: KPIs, comparisons, benchmarks, market data, structured data reports.
+  → gather data (Google Search / fetch_tech_news) → identify metrics, trends, rankings → render_rich_dashboard
+- TREND_ANALYSIS: charts + data visualization with metrics.
+  → gather data → identify quantitative metrics (counts, shares, trends) → render_rich_dashboard
 
 Rules (CRITICAL):
-- ALWAYS call 'render_prefab_dashboard' when you are finished and ready to show the results to the user. This is MANDATORY for providing your final answer.
-- Put your complete response to the user in the 'ai_answer' parameter of render_prefab_dashboard. Do NOT emit text outside of tool calls — the dashboard is the only output surface.
-- Include a chart ONLY when the user explicitly asks for analysis/comparison/trends OR when the fetched data has meaningful quantitative differences worth visualizing. Pure news/article fetches: NO chart.
-- ai_answer: 2-3 sentences max, prose only, no code blocks.
+- ALWAYS call a render tool when finished. Choose ONE:
+  • render_prefab_dashboard — article cards + optional chart. Use for news feeds, digests, library views.
+  • render_rich_dashboard — KPI metrics, tables, charts, analysis. Use when the user wants metrics, comparisons, data reports, or any non-card layout.
+- Do NOT emit text outside of tool calls — the dashboard is the only output surface.
+- render_prefab_dashboard: put your full response in 'ai_answer' (2-3 sentences, prose only). Include a chart ONLY for quantitative comparisons/trends.
+- render_rich_dashboard: put your response in 'summary'. Choose layout: "kpi_grid" (metrics first), "chart_focus" (chart first), "table_report" (table first), "split" (chart+metrics side by side).
 `;
 
   const MAX_TURNS = 12;
@@ -212,7 +216,7 @@ Rules (CRITICAL):
         ],
         toolConfig: {
           functionCallingConfig: forceFinish
-            ? { mode: "ANY", allowedFunctionNames: ["render_prefab_dashboard"] }
+            ? { mode: "ANY", allowedFunctionNames: ["render_prefab_dashboard", "render_rich_dashboard"] }
             : { mode: "AUTO" },
           ...(!forceFinish && {
             googleSearchRetrieval: {
@@ -271,7 +275,7 @@ Rules (CRITICAL):
         toolResult = { error: err.message };
       }
 
-      if (name === "render_prefab_dashboard" && toolResult?.status === "dashboard_ready") {
+      if ((name === "render_prefab_dashboard" || name === "render_rich_dashboard") && toolResult?.status === "dashboard_ready") {
         console.log(`  → dashboard rendered`);
         renderDashboard();
         dashboardRendered = true;

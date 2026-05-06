@@ -296,12 +296,18 @@ def render_prefab_dashboard(
                 series_input = chart.get("series", [])
                 chart_title = chart.get("title", "")
 
-                # Simple/Backward compatibility format
+                # Simple/Backward compatibility: labels+values arrays
                 if not data and chart.get("labels") and chart.get("values"):
                     labels = chart["labels"]
                     values = chart["values"]
                     data = [{"label": l, "value": v} for l, v in zip(labels, values)]
                     series_input = [{"data_key": "value", "label": chart_title or "Value"}]
+
+                # Auto-infer series from data keys when series omitted
+                if data and not series_input and ctype not in ("pie", "radial"):
+                    x_key = chart.get("x_axis") or "label"
+                    inferred_keys = [k for k in data[0].keys() if k != x_key]
+                    series_input = [{"data_key": k, "label": k.capitalize()} for k in inferred_keys]
 
                 if chart_title:
                     H3(chart_title)
@@ -350,6 +356,197 @@ def render_prefab_dashboard(
 
     _LAST_DASHBOARD_HTML = app.html()
     return {"status": "dashboard_ready", "topic": display_title or topic}
+
+
+def _build_chart_component(chart: dict) -> dict | None:
+    """Convert a chart param dict to a Prefab JSON chart node."""
+    ctype = chart.get("type", "").lower()
+    if ctype not in _CHART_REGISTRY:
+        return None
+    type_map = {"bar": "BarChart", "line": "LineChart", "area": "AreaChart",
+                "pie": "PieChart", "radar": "RadarChart", "radial": "RadialChart"}
+    data = chart.get("data", [])
+    series = chart.get("series", [])
+    x_axis = chart.get("xAxis") or chart.get("x_axis") or "label"
+
+    # Auto-infer series if missing
+    if data and not series and ctype not in ("pie", "radial"):
+        series = [{"dataKey": k, "label": k.capitalize()} for k in data[0] if k != x_axis]
+
+    node: dict = {"type": type_map[ctype], "data": data, "height": chart.get("height", 300)}
+    if ctype in ("pie", "radial"):
+        node["dataKey"] = chart.get("dataKey") or (series[0]["dataKey"] if series else "value")
+        node["nameKey"] = chart.get("nameKey") or x_axis
+    elif ctype == "radar":
+        node["series"] = series
+        node["axisKey"] = x_axis
+    else:
+        node["series"] = series
+        node["xAxis"] = x_axis
+        if chart.get("stacked"):
+            node["stacked"] = True
+        if chart.get("showLegend"):
+            node["showLegend"] = True
+    return node
+
+
+@mcp.tool()
+def render_rich_dashboard(
+    title: str,
+    summary: str = "",
+    layout: str = "kpi_grid",
+    metrics: list[dict] | None = None,
+    chart: dict | None = None,
+    table: dict | None = None,
+    badges: list[dict] | None = None,
+) -> dict:
+    """
+    Render a rich dashboard from typed data slots. No JSON tree authoring required.
+    Use for: KPI dashboards, metric grids, comparison charts, data tables, analysis reports.
+    Prefer render_prefab_dashboard for simple article card feeds.
+
+    layout options:
+    - "kpi_grid"      — metrics grid (top) + optional chart + optional table
+    - "chart_focus"   — chart (full width, top) + optional metrics row + optional table
+    - "table_report"  — table (top) + optional chart + optional metrics row
+    - "split"         — chart (left) + metrics column (right), side by side
+
+    title: dashboard heading (required)
+    summary: 1-3 sentence prose summary displayed below the title (optional)
+
+    metrics: list of KPI cards, each:
+        {label: str, value: str, delta?: str, trend?: "up|down|neutral", trendSentiment?: "positive|negative|neutral"}
+        Example: {"label": "MRR", "value": "$42K", "delta": "+12%", "trend": "up", "trendSentiment": "positive"}
+
+    chart: one chart, format:
+        {type: "bar|line|area|pie|radar|radial", title?: str, data: [...], series?: [{dataKey, label}], xAxis?: str}
+        For pie/radial: {type, data, dataKey, nameKey}
+        data rows are plain dicts — no "type" key. Example: {"month": "Jan", "revenue": 4200}
+
+    table: a data table:
+        {columns: [{key: str, header: str, sortable?: bool}], rows: [{...}], search?: bool, paginated?: bool, pageSize?: int}
+
+    badges: list of status badges shown in the header row:
+        [{label: str, variant?: "default|outline|info|success|destructive|warning|secondary"}]
+
+    Returns {status: "dashboard_ready"}.
+    """
+    global _LAST_DASHBOARD_HTML
+    logger.info(f"Tool Call: render_rich_dashboard(layout='{layout}', title='{title}', "
+                f"metrics={len(metrics or [])}, chart={bool(chart)}, table={bool(table)})")
+
+    def metric_card(m: dict) -> dict:
+        metric_node: dict = {"type": "Metric", "label": m.get("label", ""), "value": str(m.get("value", ""))}
+        if m.get("delta"):
+            metric_node["delta"] = m["delta"]
+        if m.get("trend"):
+            metric_node["trend"] = m["trend"]
+        if m.get("trendSentiment"):
+            metric_node["trendSentiment"] = m["trendSentiment"]
+        return {"type": "Card", "children": [{"type": "CardContent", "children": [metric_node]}]}
+
+    def metrics_grid(cols: int = 3) -> dict | None:
+        if not metrics:
+            return None
+        return {"type": "Grid", "columns": cols, "gap": 4,
+                "children": [metric_card(m) for m in metrics]}
+
+    def metrics_row() -> dict | None:
+        if not metrics:
+            return None
+        return {"type": "Row", "gap": 4,
+                "children": [metric_card(m) for m in metrics]}
+
+    def chart_node() -> dict | None:
+        return _build_chart_component(chart) if chart else None
+
+    def table_node() -> dict | None:
+        if not table:
+            return None
+        node: dict = {"type": "DataTable",
+                      "columns": table.get("columns", []),
+                      "rows": table.get("rows", [])}
+        if table.get("search"):
+            node["search"] = True
+        if table.get("paginated"):
+            node["paginated"] = True
+            node["pageSize"] = table.get("pageSize", 10)
+        return node
+
+    # ── Assemble header ───────────────────────────────────────────────────────
+    header_children: list[dict] = [{"type": "H2", "content": title}]
+    if badges:
+        header_children.append({
+            "type": "Row", "gap": 2,
+            "children": [{"type": "Badge", "label": b["label"],
+                           **({"variant": b["variant"]} if b.get("variant") else {})}
+                         for b in badges]
+        })
+    if summary:
+        header_children.append({"type": "Card", "children": [
+            {"type": "CardContent", "children": [{"type": "Markdown", "content": summary}]}
+        ]})
+
+    # ── Assemble body by layout ───────────────────────────────────────────────
+    body: list[dict] = []
+    cn = chart_node()
+    mg = metrics_grid()
+    mr = metrics_row()
+    tn = table_node()
+
+    if layout == "kpi_grid":
+        if mg:
+            body.append(mg)
+        if cn:
+            body.append(cn)
+        if tn:
+            body.append(tn)
+
+    elif layout == "chart_focus":
+        if cn:
+            body.append(cn)
+        if mr:
+            body.append(mr)
+        if tn:
+            body.append(tn)
+
+    elif layout == "table_report":
+        if tn:
+            body.append(tn)
+        if cn:
+            body.append(cn)
+        if mr:
+            body.append(mr)
+
+    elif layout == "split":
+        left = cn or tn
+        right_items = ([mg] if mg else []) + ([tn] if tn and not left == tn else [])
+        right = {"type": "Column", "gap": 4, "children": right_items} if right_items else None
+        if left and right:
+            body.append({"type": "Row", "gap": 4, "align": "start",
+                          "children": [left, right]})
+        elif left:
+            body.append(left)
+        elif right:
+            body.append(right)
+
+    else:
+        if mg:
+            body.append(mg)
+        if cn:
+            body.append(cn)
+        if tn:
+            body.append(tn)
+
+    spec = {"type": "Column", "gap": 4, "children": header_children + body}
+
+    try:
+        app = PrefabApp.from_json({"view": spec})
+        _LAST_DASHBOARD_HTML = app.html()
+        return {"status": "dashboard_ready"}
+    except Exception as e:
+        logger.error(f"render_rich_dashboard render error: {e}")
+        return {"status": "error", "errors": [str(e)]}
 
 
 @mcp.custom_route("/dashboard", methods=["GET"])
