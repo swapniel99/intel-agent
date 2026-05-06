@@ -229,7 +229,11 @@ def _normalize_chart(chart: dict) -> dict:
         c["type"] = c["type"].lower()
 
     # Handle common aliases
-    for old, new in [("show_legend", "showLegend"), ("show_tooltip", "showTooltip"), ("show_grid", "showGrid")]:
+    for old, new in [
+        ("show_legend", "showLegend"), ("show_tooltip", "showTooltip"),
+        ("show_grid", "showGrid"), ("show_dots", "showDots"),
+        ("animate", "animate")
+    ]:
         if old in c and new not in c:
             c[new] = c.pop(old)
 
@@ -256,10 +260,9 @@ def _normalize_chart(chart: dict) -> dict:
 
     # Chart-specific aliases
     if c.get("type") == "radar":
-        if "axis_key" in c and "axisKey" not in c:
-            c["axisKey"] = c.pop("axis_key")
-        if "axisKey" in c and "xAxis" not in c:
-            c["xAxis"] = c["axisKey"]
+        for k in ["axis_key", "axis"]:
+            if k in c and "axisKey" not in c:
+                c["axisKey"] = c.pop(k)
 
     return c
 
@@ -275,7 +278,18 @@ def _build_chart_node(chart: dict) -> dict | None:
     }
     data = chart.get("data", [])
     series = chart.get("series", [])
-    x_axis = chart.get("xAxis") or chart.get("x_axis") or "label"
+
+    # Smart axis key detection
+    x_axis = chart.get("xAxis") or chart.get("axisKey") or chart.get("x_axis") or chart.get("axis_key")
+    if not x_axis and data and isinstance(data[0], dict):
+        # Find first key that isn't in series dataKeys
+        series_keys = {s.get("dataKey") for s in series if s.get("dataKey")}
+        for k in data[0].keys():
+            if k not in series_keys:
+                x_axis = k
+                break
+    if not x_axis:
+        x_axis = "label"
 
     if data and not series and ctype not in ("pie", "radial"):
         series = [{"dataKey": k, "label": k.capitalize()} for k in data[0] if k != x_axis]
