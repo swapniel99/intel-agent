@@ -12,6 +12,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from prefab_ui import PrefabApp
+from prefab_ui.components import Column, Muted
 
 _CHART_TYPES = {"bar", "line", "area", "pie", "radar", "radial"}
 

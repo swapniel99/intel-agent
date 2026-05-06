@@ -10,6 +10,8 @@ import pytest
 import httpx
 from mcp.client.stdio import stdio_client, StdioServerParameters
 from mcp.client.session import ClientSession
+from starlette.testclient import TestClient
+from main import mcp
 
 SERVER_URL = "http://localhost:8000/mcp"
 TOOL_NAMES = {"fetch_tech_news", "manage_local_library", "render_dashboard"}
@@ -18,6 +20,12 @@ TOOL_NAMES = {"fetch_tech_news", "manage_local_library", "render_dashboard"}
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+@pytest.fixture
+def client():
+    # Use the same transport as the main app
+    return TestClient(mcp.http_app(transport="streamable-http"))
+
 
 def _parse(result) -> list | dict:
     raw = result.content[0].text if hasattr(result.content[0], "text") else str(result.content[0])
@@ -60,6 +68,8 @@ async def test_server_connects():
 @pytest.mark.asyncio
 async def test_fetch_hn():
     data = _parse(await _call("fetch_tech_news", {"query": "python", "limit": 3, "source": "hn"}))
+    if any("status" in d and "unavailable" in d["status"] for d in data):
+        pytest.skip("HN unavailable")
     articles = [d for d in data if "title" in d]
     assert len(articles) > 0
     for a in articles:
@@ -70,6 +80,8 @@ async def test_fetch_hn():
 @pytest.mark.asyncio
 async def test_fetch_dev():
     data = _parse(await _call("fetch_tech_news", {"query": "python", "limit": 3, "source": "dev"}))
+    if any("status" in d and "unavailable" in d["status"] for d in data):
+        pytest.skip("Dev.to unavailable")
     articles = [d for d in data if "title" in d]
     assert len(articles) > 0
     for a in articles:
@@ -291,3 +303,21 @@ async def test_render_with_metrics():
         ]
     }))
     assert data.get("status") == "dashboard_ready"
+
+
+# ---------------------------------------------------------------------------
+# HTTP Custom Routes
+# ---------------------------------------------------------------------------
+
+def test_dashboard_route_dark(client):
+    resp = client.get("/dashboard?theme=dark")
+    assert resp.status_code == 200
+    assert "class=\"dark\"" in resp.text
+    assert "No dashboard rendered yet" in resp.text
+
+
+def test_dashboard_route_light(client):
+    resp = client.get("/dashboard?theme=light")
+    assert resp.status_code == 200
+    assert "class=\"dark\"" not in resp.text
+    assert "No dashboard rendered yet" in resp.text
