@@ -12,22 +12,9 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from prefab_ui import PrefabApp
-from prefab_ui.components.charts import (
-    AreaChart, BarChart, ChartSeries, LineChart, PieChart,
-    RadarChart, RadialChart,
-)
-from prefab_ui.components.card import Card, CardHeader, CardTitle, CardContent
-from prefab_ui.components.column import Column
-from prefab_ui.components.row import Row
-from prefab_ui.components.badge import Badge
-from prefab_ui.components.markdown import Markdown
-from prefab_ui.components.typography import H2, H3, Muted
+from prefab_ui.components import Column, Muted
 
-_CHART_REGISTRY = {
-    "bar": BarChart, "line": LineChart, "pie": PieChart,
-    "area": AreaChart, "radar": RadarChart,
-    "radial": RadialChart,
-}
+_CHART_TYPES = {"bar", "line", "area", "pie", "radar", "radial"}
 
 _LAST_DASHBOARD_HTML: str = ""
 
@@ -236,120 +223,286 @@ def manage_local_library(
 _DEFAULT_EMOJI = "🔎"
 
 
+def _normalize_chart(chart: dict) -> dict:
+    """Lowercase type, convert labels/values simple format, normalize keys, enable legends/tooltips by default."""
+    c = dict(chart)
+    if "type" in c:
+        c["type"] = c["type"].lower()
+
+    # Handle common aliases
+    for old, new in [
+        ("show_legend", "showLegend"), ("show_tooltip", "showTooltip"),
+        ("show_grid", "showGrid"), ("show_dots", "showDots"),
+        ("animate", "animate")
+    ]:
+        if old in c and new not in c:
+            c[new] = c.pop(old)
+
+    # Enable legend/tooltip by default if not specified
+    if "showLegend" not in c:
+        c["showLegend"] = True
+    if "showTooltip" not in c:
+        c["showTooltip"] = True
+    if "showGrid" not in c:
+        c["showGrid"] = True
+
+    if not c.get("data") and c.get("labels") and c.get("values"):
+        labels = c.pop("labels")
+        values = c.pop("values")
+        c["data"] = [{"label": lbl, "value": val} for lbl, val in zip(labels, values)]
+        if not c.get("series"):
+            c["series"] = [{"dataKey": "value", "label": c.get("title") or "Value"}]
+
+    if c.get("series"):
+        c["series"] = [
+            {("dataKey" if k == "data_key" else k): v for k, v in s.items()}
+            for s in c["series"]
+        ]
+
+    # Chart-specific aliases
+    if c.get("type") == "radar":
+        for k in ["axis_key", "axis"]:
+            if k in c and "axisKey" not in c:
+                c["axisKey"] = c.pop(k)
+
+    return c
+
+
+def _build_chart_node(chart: dict) -> dict | None:
+    """Convert normalized chart dict to Prefab JSON chart node."""
+    ctype = chart.get("type", "")
+    if ctype not in _CHART_TYPES:
+        return None
+    type_map = {
+        "bar": "BarChart", "line": "LineChart", "area": "AreaChart",
+        "pie": "PieChart", "radar": "RadarChart", "radial": "RadialChart",
+    }
+    data = chart.get("data", [])
+    series = chart.get("series", [])
+
+    # Smart axis key detection
+    x_axis = chart.get("xAxis") or chart.get("axisKey") or chart.get("x_axis") or chart.get("axis_key")
+    if not x_axis and data and isinstance(data[0], dict):
+        # Find first key that isn't in series dataKeys
+        series_keys = {s.get("dataKey") for s in series if s.get("dataKey")}
+        for k in data[0].keys():
+            if k not in series_keys:
+                x_axis = k
+                break
+    if not x_axis:
+        x_axis = "label"
+
+    if data and not series and ctype not in ("pie", "radial"):
+        series = [{"dataKey": k, "label": k.capitalize()} for k in data[0] if k != x_axis]
+
+    node: dict = {"type": type_map[ctype], "data": data, "height": chart.get("height", 300)}
+
+    # Apply common visual properties
+    for prop in ("showLegend", "showTooltip", "showGrid", "animate", "title"):
+        if prop in chart:
+            node[prop] = chart[prop]
+
+    if ctype in ("pie", "radial"):
+        node["dataKey"] = chart.get("dataKey") or (series[0]["dataKey"] if series else "value")
+        node["nameKey"] = chart.get("nameKey") or x_axis
+    elif ctype == "radar":
+        node["series"] = series
+        node["axisKey"] = x_axis
+    else:  # bar, line, area
+        node["series"] = series
+        node["xAxis"] = x_axis
+        if chart.get("stacked"):
+            node["stacked"] = True
+    return node
+
+
 @mcp.tool()
-def render_prefab_dashboard(
-    cards: list[dict],
-    topic: str = "tech",
-    display_title: str = "",
+def render_dashboard(
+    title: str,
+    summary: str = "",
+    cards: list[dict] | None = None,
+    metrics: list[dict] | None = None,
     chart: dict | None = None,
-    ai_answer: str = "",
+    table: dict | None = None,
+    badges: list[dict] | None = None,
+    layout: str = "auto",
 ) -> dict:
     """
-    Compile curated articles and data into a professional dashboard.
+    Render a dashboard. Always call this when finished — it is the only output surface.
 
-    Each card: {title, url, points, source, ai_summary: "MUST be a 1-sentence executive summary"}.
-    topic: pass the user's search subject verbatim (e.g. 'Local LLMs').
-    ai_answer: your full text response to the user (2-3 sentences). ALWAYS populate this — it is displayed in the dashboard instead of the chat panel.
+    title: dashboard heading (required).
+    summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
 
-    CARDS:
-    - If no chart, ALWAYS include 3-5 article cards.
-    - If no data found, pass empty cards list with topic explaining why.
+    cards: article/news cards. Use for feeds, search results, library views.
+        Each: {title, url, points, source, ai_summary: "1-sentence executive summary"}
 
-    CHART SELECTION LOGIC:
-    - ONLY include a chart for quantitative data (numbers/percentages).
-    - type: ['pie', 'bar', 'line', 'area', 'radar', 'radial'].
-    - pie/bar/line/area: Use SIMPLE format (labels + values). 'area' is best for volume trends.
-    - radar: Use MULTIVARIATE format (data + series).
-    - radial: Use MULTIVARIATE format to show scores for a single subject.
+    metrics: KPI cards. Use for numbers, comparisons, benchmarks.
+        Each: {label, value, delta?, trend?: "up|down|neutral", trendSentiment?: "positive|negative|neutral"}
+        Example: {"label": "Stars", "value": "92K", "delta": "+12%", "trend": "up", "trendSentiment": "positive"}
 
-    DATA FORMATS (CRITICAL):
-    - SIMPLE: chart={type, title, labels: ["A", "B"], values: [10, 20]} (Auto-converts to 'label' and 'value' keys)
-    - MULTIVARIATE: chart={type, title, data: [{label: "Speed", val: 10}, {label: "Power", val: 20}], series: [{data_key: "val", label: "Metric"}]}
-    - RADAR/RADIAL: Use 'label' in the data objects for the spoke/axis names.
+    chart: one chart.
+        SIMPLE (pie/bar/line/area):   {type, title?, labels: ["A","B"], values: [10,20]}
+        MULTIVARIATE (bar/line/area): {type, title?, data: [{"x":"A","val":10}], series: [{dataKey:"val", label:"Metric"}], xAxis:"x"}
+        PIE/RADIAL:                   {type, data: [{"cat":"X","pct":40}], dataKey:"pct", nameKey:"cat"}
+        RADAR:                        {type, data: [{"axis":"Speed","a":80,"b":70}], series:[{dataKey:"a"},{dataKey:"b"}], axisKey:"axis"}
 
-    Returns {status} — the UI will automatically render in the side panel.
+    table: data table.
+        {columns: [{key, header, sortable?}], rows: [{...}], search?, paginated?, pageSize?}
+
+    badges: header status badges.
+        [{label, variant?: "default|outline|info|success|destructive|warning|secondary"}]
+
+    layout: "auto" (default) | "kpi_grid" | "chart_focus" | "table_report" | "split"
+        auto: cards→article feed, chart-only→chart_focus, table-only→table_report, else→kpi_grid
+        split: chart left + metrics column right, side by side.
+
+    Returns {status: "dashboard_ready"}.
     """
     global _LAST_DASHBOARD_HTML
+    logger.info(
+        f"Tool Call: render_dashboard(layout='{layout}', title='{title}', "
+        f"cards={len(cards or [])}, metrics={len(metrics or [])}, "
+        f"chart={bool(chart)}, table={bool(table)})"
+    )
 
-    # Normalize chart type to lowercase for registry lookup
-    if chart and "type" in chart:
-        chart["type"] = chart["type"].lower()
+    def _article_card(c: dict) -> dict:
+        p = c.get("points", 0) or 0
+        if isinstance(p, (int, float)):
+            if p >= 1_000_000_000:
+                p_str = f"{p/1_000_000_000:.1f}B"
+            elif p >= 1_000_000:
+                p_str = f"{p/1_000_000:.1f}M"
+            elif p >= 1_000:
+                p_str = f"{p/1_000:.1f}K"
+            else:
+                p_str = str(int(p))
+        else:
+            p_str = str(p)
+        src = c.get("source")
+        badge_nodes: list[dict] = []
+        if src:
+            badge_nodes.append({"type": "Badge", "label": str(src).upper(), "variant": "outline"})
+        badge_nodes.append({"type": "Badge", "label": f"▲ {p_str}", "variant": "info"})
+        card_children: list[dict] = [
+            {"type": "CardHeader", "children": [
+                {"type": "Row", "align": "start", "justify": "between", "gap": 4, "children": [
+                    {"type": "CardTitle", "children": [
+                        {"type": "Markdown", "content": f"[{c.get('title', 'Untitled')}]({c.get('url', '#')})"}
+                    ]},
+                    {"type": "Row", "gap": 2, "children": badge_nodes},
+                ]},
+            ]},
+        ]
+        if c.get("ai_summary"):
+            card_children.append({"type": "CardContent", "children": [
+                {"type": "Muted", "content": c["ai_summary"]}
+            ]})
+        return {"type": "Card", "children": card_children}
 
-    logger.info(f"Tool Call: render_prefab_dashboard(topic='{topic}', cards_count={len(cards)}, chart={chart}, ai_answer='{ai_answer[:100]}...')")
+    def _metric_card(m: dict) -> dict:
+        mn: dict = {"type": "Metric", "label": m.get("label", ""), "value": str(m.get("value", ""))}
+        for k in ("delta", "trend", "trendSentiment"):
+            if m.get(k):
+                mn[k] = m[k]
+        return {"type": "Card", "children": [{"type": "CardContent", "children": [mn]}]}
 
-    heading = f"{_DEFAULT_EMOJI} {display_title or topic}"
+    def _table_node() -> dict | None:
+        if not table:
+            return None
+        n: dict = {"type": "DataTable", "columns": table.get("columns", []), "rows": table.get("rows", [])}
+        if table.get("search"):
+            n["search"] = True
+        if table.get("paginated"):
+            n["paginated"] = True
+            n["pageSize"] = table.get("pageSize", 10)
+        return n
 
-    app = PrefabApp()
-    with app:
-        with Column():
-            H2(heading)
+    cn: dict | None = _build_chart_node(_normalize_chart(chart)) if chart else None
 
-            if ai_answer:
-                with Card():
-                    with CardContent():
-                        Markdown(ai_answer)
+    eff = layout
+    if layout == "auto":
+        if cards:
+            eff = "article_feed"
+        elif cn and not metrics and not table:
+            eff = "chart_focus"
+        elif table and not cn and not metrics:
+            eff = "table_report"
+        else:
+            eff = "kpi_grid"
 
-            if chart and chart.get("type") in _CHART_REGISTRY:
-                ctype = chart["type"]
-                ChartCls = _CHART_REGISTRY[ctype]
-                data = chart.get("data", [])
-                series_input = chart.get("series", [])
-                chart_title = chart.get("title", "")
+    header: list[dict] = [{"type": "H2", "content": f"{_DEFAULT_EMOJI} {title}"}]
+    if badges:
+        header.append({"type": "Row", "gap": 2, "children": [
+            {"type": "Badge", "label": b["label"],
+             **({"variant": b["variant"]} if b.get("variant") else {})}
+            for b in badges
+        ]})
+    if summary:
+        header.append({"type": "Card", "children": [
+            {"type": "CardContent", "children": [{"type": "Markdown", "content": summary}]}
+        ]})
 
-                # Simple/Backward compatibility format
-                if not data and chart.get("labels") and chart.get("values"):
-                    labels = chart["labels"]
-                    values = chart["values"]
-                    data = [{"label": l, "value": v} for l, v in zip(labels, values)]
-                    series_input = [{"data_key": "value", "label": chart_title or "Value"}]
+    body: list[dict] = []
+    mg = {"type": "Grid", "columns": 3, "gap": 4, "children": [_metric_card(m) for m in metrics]} if metrics else None
+    mr = {"type": "Row", "gap": 4, "children": [_metric_card(m) for m in metrics]} if metrics else None
+    tn = _table_node()
 
-                if chart_title:
-                    H3(chart_title)
+    if eff == "article_feed":
+        if cn:
+            body.append(cn)
+        for c in (cards or []):
+            body.append(_article_card(c))
+        if mg:
+            body.append(mg)
+        if tn:
+            body.append(tn)
+    elif eff == "kpi_grid":
+        if mg:
+            body.append(mg)
+        if cn:
+            body.append(cn)
+        if tn:
+            body.append(tn)
+    elif eff == "chart_focus":
+        if cn:
+            body.append(cn)
+        if mr:
+            body.append(mr)
+        if tn:
+            body.append(tn)
+    elif eff == "table_report":
+        if tn:
+            body.append(tn)
+        if cn:
+            body.append(cn)
+        if mr:
+            body.append(mr)
+    elif eff == "split":
+        left = cn or tn
+        right_items = ([mg] if mg else []) + ([tn] if tn and left != tn else [])
+        right = {"type": "Column", "gap": 4, "children": right_items} if right_items else None
+        if left and right:
+            body.append({"type": "Row", "gap": 4, "align": "start", "children": [left, right]})
+        elif left:
+            body.append(left)
+        elif right:
+            body.append(right)
+    else:
+        if mg:
+            body.append(mg)
+        if cn:
+            body.append(cn)
+        if tn:
+            body.append(tn)
 
-                if ctype in ("pie", "radial"):
-                    dk = series_input[0]["data_key"] if series_input else "value"
-                    nk = chart.get("x_axis") or "label"
-                    ChartCls(data=data, data_key=dk, name_key=nk, show_legend=True)
-                elif ctype == "radar":
-                    series = [ChartSeries(**s) for s in series_input]
-                    ChartCls(data=data, series=series, axis_key=chart.get("x_axis") or "label")
-                elif ctype in ("bar", "line", "area"):
-                    series = [ChartSeries(**s) for s in series_input]
-                    ChartCls(data=data, series=series, x_axis=chart.get("x_axis") or "label")
-                else:
-                    series = [ChartSeries(**s) for s in series_input] if series_input else [ChartSeries(data_key="value", label="Value")]
-                    ChartCls(data=data, series=series)
-
-            for c in cards:
-                with Card():
-                    with CardHeader():
-                        with Row(align="start", justify="between", gap=4, css_class="flex-wrap"):
-                            with CardTitle(css_class="flex-1"):
-                                Markdown(f"[{c.get('title', 'Untitled')}]({c.get('url', '#')})")
-                            with Row(align="center", gap=2, css_class="shrink-0 pt-1"):
-                                src = c.get("source")
-                                if src:
-                                    Badge(label=str(src).upper(), variant="outline")
-                                # Format points for readability
-                                p = c.get("points", 0) or 0
-                                if isinstance(p, (int, float)):
-                                    if p >= 1_000_000_000:
-                                        p_str = f"{p/1_000_000_000:.1f}B"
-                                    elif p >= 1_000_000:
-                                        p_str = f"{p/1_000_000:.1f}M"
-                                    elif p >= 1_000:
-                                        p_str = f"{p/1_000:.1f}K"
-                                    else:
-                                        p_str = str(p)
-                                else:
-                                    p_str = str(p)
-                                Badge(label=f"▲ {p_str}", variant="info")
-                    with CardContent():
-                        if c.get("ai_summary"):
-                            Muted(c["ai_summary"])
-
-    _LAST_DASHBOARD_HTML = app.html()
-    return {"status": "dashboard_ready", "topic": display_title or topic}
+    spec = {"type": "Column", "gap": 4, "children": header + body}
+    try:
+        app = PrefabApp.from_json({"view": spec})
+        _LAST_DASHBOARD_HTML = app.html()
+        return {"status": "dashboard_ready"}
+    except Exception as e:
+        logger.error(f"render_dashboard render error: {e}")
+        return {"status": "error", "errors": [str(e)]}
 
 
 @mcp.custom_route("/dashboard", methods=["GET"])
@@ -380,6 +533,11 @@ async def dashboard(request: Request) -> HTMLResponse:
 
 
 if __name__ == "__main__":
-    import uvicorn
-    app = mcp.http_app(transport="streamable-http", middleware=_cors_middleware)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import sys
+    # Default to stdio for MCP, but allow 'http' for the dashboard server
+    if len(sys.argv) > 1 and sys.argv[1] == "stdio":
+        mcp.run()
+    else:
+        import uvicorn
+        app = mcp.http_app(transport="streamable-http", middleware=_cors_middleware)
+        uvicorn.run(app, host="0.0.0.0", port=8000)

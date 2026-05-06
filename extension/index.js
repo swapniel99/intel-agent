@@ -181,19 +181,22 @@ Pick tools based on the user's intent.
 
 Intent classification:
 - HYBRID_RESEARCH: latest info + saved knowledge.
-  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → MERGE all results → manage_local_library(save_new) → render_prefab_dashboard
+  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → MERGE all results → manage_local_library(save_new) → render_dashboard(cards=[...])
 - ARTICLE_CURATION: list/feed/digest of new articles.
-  → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
+  → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_dashboard(cards=[...])
 - LIBRARY_MANAGEMENT: browse, search, or clean local collection.
-  → render_prefab_dashboard
-- TREND_ANALYSIS: comparisons and data visualization.
-  - Gather data → PROACTIVELY identify quantitative metrics (counts, shares, trends) → include a chart → render_prefab_dashboard
+  → render_dashboard(cards=[...])
+- METRICS_ANALYSIS: KPIs, comparisons, benchmarks, market data, structured data reports.
+  → gather data (Google Search / fetch_tech_news) → identify metrics, trends, rankings → render_dashboard(metrics=[...], chart=..., layout="auto")
+- TREND_ANALYSIS: charts + data visualization with metrics.
+  → gather data → identify quantitative metrics → render_dashboard(chart=..., metrics=[...], layout="auto")
 
 Rules (CRITICAL):
-- ALWAYS call 'render_prefab_dashboard' when you are finished and ready to show the results to the user. This is MANDATORY for providing your final answer.
-- Put your complete response to the user in the 'ai_answer' parameter of render_prefab_dashboard. Do NOT emit text outside of tool calls — the dashboard is the only output surface.
-- Include a chart ONLY when the user explicitly asks for analysis/comparison/trends OR when the fetched data has meaningful quantitative differences worth visualizing. Pure news/article fetches: NO chart.
-- ai_answer: 2-3 sentences max, prose only, no code blocks.
+- ALWAYS call render_dashboard when finished. It is the only output surface.
+- Do NOT emit text outside of tool calls.
+- summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
+- Use cards for article feeds. Use metrics for KPI numbers. Use chart for visualizations. Use table for comparisons.
+- layout="auto" always works — backend picks the best layout. Only set layout explicitly for "split".
 `;
 
   const MAX_TURNS = 12;
@@ -212,7 +215,7 @@ Rules (CRITICAL):
         ],
         toolConfig: {
           functionCallingConfig: forceFinish
-            ? { mode: "ANY", allowedFunctionNames: ["render_prefab_dashboard"] }
+            ? { mode: "ANY", allowedFunctionNames: ["render_dashboard"] }
             : { mode: "AUTO" },
           ...(!forceFinish && {
             googleSearchRetrieval: {
@@ -239,10 +242,9 @@ Rules (CRITICAL):
       if (textResponse) {
         setStatus("Rendering fallback…");
         try {
-          await callMcpTool("render_prefab_dashboard", {
-            cards: [],
-            topic: "Research Result",
-            ai_answer: textResponse
+          await callMcpTool("render_dashboard", {
+            title: "Research Result",
+            summary: textResponse
           });
           renderDashboard();
           setStatus("Done.", "success");
@@ -271,7 +273,7 @@ Rules (CRITICAL):
         toolResult = { error: err.message };
       }
 
-      if (name === "render_prefab_dashboard" && toolResult?.status === "dashboard_ready") {
+      if (name === "render_dashboard" && toolResult?.status === "dashboard_ready") {
         console.log(`  → dashboard rendered`);
         renderDashboard();
         dashboardRendered = true;

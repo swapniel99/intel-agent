@@ -28,7 +28,7 @@ graph TD
     subgraph "Local Tools (Python)"
         FastMCP --> T1[fetch_tech_news]
         FastMCP --> T2[manage_local_library]
-        FastMCP --> T3[render_prefab_dashboard]
+        FastMCP --> T3[render_dashboard]
         T1 --> HN[Hacker News / Dev.to / Reddit]
         T2 --> JSON[(saved_articles.json)]
         T3 --> Cache[_LAST_DASHBOARD_HTML]
@@ -76,13 +76,16 @@ uv sync
 |---|---|---|
 | `fetch_tech_news` | Retrieves trending tech discussions from multiple sources. | Hacker News, Dev.to, Reddit |
 | `manage_local_library` | Full CRUD on research: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. | `saved_articles.json` |
-| `render_prefab_dashboard` | Compiles research into a rich HTML dashboard. Supports 6 chart types and auto-theme matching. | Prefab UI |
+| `render_dashboard` | Compiles research into a rich HTML dashboard. Supports 6 chart types, metrics, and tables. | Prefab UI |
 | **Google Search** | (Native) Provides real-time factual grounding for general queries. | Google Search Index |
 
-### Dashboard Chart Support
-- **Comparison:** Bar, Line, Area
-- **Composition:** Pie, Radial
-- **Multivariate:** Radar
+### Dashboard Features
+- **Multi-Layout:** `auto`, `kpi_grid`, `chart_focus`, `table_report`, and `split`.
+- **Rich Components:**
+  - **Charts:** Bar, Line, Area, Pie, Radar, Radial.
+  - **KPIs:** Metric cards with trend indicators and sentiment.
+  - **Data Tables:** Searchable and paginated tables.
+  - **Article Cards:** Curated news feed with AI summaries and badges.
 
 ---
 
@@ -96,7 +99,7 @@ uv sync
 2. **Filter:** Gemini calls `manage_local_library(check_duplicates)` to see what's already saved.
 3. **Summarize:** Gemini generates concise, 1-sentence summaries for the new findings.
 4. **Persist:** Gemini calls `manage_local_library(save_new)` to update your local ledger.
-5. **Visualize:** Gemini calls `render_prefab_dashboard` with curated cards and a relevant chart.
+5. **Visualize:** Gemini calls `render_dashboard` with curated cards and a relevant chart.
 6. **Result:** The dashboard panel updates instantly with a professional research report.
 
 ---

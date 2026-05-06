@@ -1,85 +1,80 @@
-# Graph Report - .  (2026-05-06)
+# Graph Report - intel-agent  (2026-05-06)
 
 ## Corpus Check
-- 12 files · ~75,000 words
+- 6 files · ~96,728 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 734 nodes · 2222 edges · 60 communities (50 shown, 10 thin omitted)
-- Extraction: 99% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 11 edges (avg confidence: 0.9)
+- 811 nodes · 2999 edges · 51 communities (47 shown, 4 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 11 edges (avg confidence: 0.9)
 - Token cost: 0 input · 0 output
 
+## Graph Freshness
+- Built from commit: `aa0b0508`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
+
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_GenAI Core AudioStreaming|GenAI Core Audio/Streaming]]
-- [[_COMMUNITY_System Architecture & Design|System Architecture & Design]]
-- [[_COMMUNITY_Vertex AI Batch Jobs (A)|Vertex AI Batch Jobs (A)]]
-- [[_COMMUNITY_ML Dev Content Serialization (A)|ML Dev Content Serialization (A)]]
-- [[_COMMUNITY_Content Transform Pipeline|Content Transform Pipeline]]
-- [[_COMMUNITY_Frappe Charts Visualization|Frappe Charts Visualization]]
-- [[_COMMUNITY_HTTP Client & Retry Logic|HTTP Client & Retry Logic]]
-- [[_COMMUNITY_API Connection & Auth Config|API Connection & Auth Config]]
-- [[_COMMUNITY_BatchCache List Operations|Batch/Cache List Operations]]
-- [[_COMMUNITY_Side Panel Agentic Loop|Side Panel Agentic Loop]]
-- [[_COMMUNITY_Backend MCP Tools & Routes|Backend MCP Tools & Routes]]
-- [[_COMMUNITY_Async Generator Utilities|Async Generator Utilities]]
-- [[_COMMUNITY_File Download & Upload|File Download & Upload]]
-- [[_COMMUNITY_Content Serialization (B)|Content Serialization (B)]]
-- [[_COMMUNITY_ImageVideo Generation|Image/Video Generation]]
-- [[_COMMUNITY_HTTP Request Builder|HTTP Request Builder]]
-- [[_COMMUNITY_Video Generation (Vertex)|Video Generation (Vertex)]]
-- [[_COMMUNITY_Delete & Internal Operations|Delete & Internal Operations]]
-- [[_COMMUNITY_Video Operation Fetch|Video Operation Fetch]]
-- [[_COMMUNITY_Token Count & Media Download|Token Count & Media Download]]
-- [[_COMMUNITY_API Call & Tuning Get|API Call & Tuning Get]]
-- [[_COMMUNITY_Batch Job Source Config|Batch Job Source Config]]
-- [[_COMMUNITY_Token Compute & Image Edit|Token Compute & Image Edit]]
-- [[_COMMUNITY_Job Cancel Operations|Job Cancel Operations]]
-- [[_COMMUNITY_Pagination Constructor|Pagination Constructor]]
-- [[_COMMUNITY_Live Realtime Audio Input|Live Realtime Audio Input]]
-- [[_COMMUNITY_Batch Job Serialization|Batch Job Serialization]]
-- [[_COMMUNITY_Chat History Management|Chat History Management]]
-- [[_COMMUNITY_Auth Headers|Auth Headers]]
-- [[_COMMUNITY_File Meta Operations|File Meta Operations]]
-- [[_COMMUNITY_File Byte Utilities|File Byte Utilities]]
-- [[_COMMUNITY_Image Generation (Vertex)|Image Generation (Vertex)]]
-- [[_COMMUNITY_Video Bytes Serialization|Video Bytes Serialization]]
-- [[_COMMUNITY_Model Tuning (MLDev)|Model Tuning (MLDev)]]
-- [[_COMMUNITY_Image Recontextualize (Vertex)|Image Recontextualize (Vertex)]]
-- [[_COMMUNITY_Part Transform Variant D|Part Transform Variant D]]
-- [[_COMMUNITY_Part Transform Variant A|Part Transform Variant A]]
-- [[_COMMUNITY_Tool Config Variant C|Tool Config Variant C]]
-- [[_COMMUNITY_Tool Config Variant A|Tool Config Variant A]]
-- [[_COMMUNITY_Tool Config Variant B|Tool Config Variant B]]
-- [[_COMMUNITY_Tool Config Variant D|Tool Config Variant D]]
-- [[_COMMUNITY_Tuned Model Serialization|Tuned Model Serialization]]
-- [[_COMMUNITY_Tool Config Variant E|Tool Config Variant E]]
-- [[_COMMUNITY_Image Generation (MLDev)|Image Generation (MLDev)]]
-- [[_COMMUNITY_Model Tuning (Vertex)|Model Tuning (Vertex)]]
-- [[_COMMUNITY_Image Upscale (Vertex)|Image Upscale (Vertex)]]
-- [[_COMMUNITY_Embeddings Batch Job|Embeddings Batch Job]]
-- [[_COMMUNITY_Image Segmentation (Vertex)|Image Segmentation (Vertex)]]
-- [[_COMMUNITY_File Register Operations|File Register Operations]]
-- [[_COMMUNITY_Embeddings Batch Source|Embeddings Batch Source]]
-- [[_COMMUNITY_Multi-Source Fetch Tests|Multi-Source Fetch Tests]]
-- [[_COMMUNITY_MCP Connectivity Tests|MCP Connectivity Tests]]
-- [[_COMMUNITY_Chrome Extension Background|Chrome Extension Background]]
-- [[_COMMUNITY_Options Page Script|Options Page Script]]
-- [[_COMMUNITY_README Architecture Docs|README Architecture Docs]]
-- [[_COMMUNITY_CLAUDE.md Guide|CLAUDE.md Guide]]
-- [[_COMMUNITY_Community 58|Community 58]]
-- [[_COMMUNITY_Community 59|Community 59]]
+- [[_COMMUNITY_MCP Server Testing|MCP Server Testing]]
+- [[_COMMUNITY_GenAI SDK Internal Logic|GenAI SDK Internal Logic]]
+- [[_COMMUNITY_MLDev & Vertex Response Mapping|MLDev & Vertex Response Mapping]]
+- [[_COMMUNITY_IntelAgent Core Components|IntelAgent Core Components]]
+- [[_COMMUNITY_Vertex AI Job Management|Vertex AI Job Management]]
+- [[_COMMUNITY_Part & Content Factory|Part & Content Factory]]
+- [[_COMMUNITY_MLDev Configuration Transformers|MLDev Configuration Transformers]]
+- [[_COMMUNITY_Agent Curator Backend Handlers|Agent Curator Backend Handlers]]
+- [[_COMMUNITY_SDK Auth & Metadata Handling|SDK Auth & Metadata Handling]]
+- [[_COMMUNITY_HTTP Request & Retry Logic|HTTP Request & Retry Logic]]
+- [[_COMMUNITY_Streaming & SSE Processing|Streaming & SSE Processing]]
+- [[_COMMUNITY_Extension Sidepanel Controller|Extension Sidepanel Controller]]
+- [[_COMMUNITY_Extension Dashboard Interface|Extension Dashboard Interface]]
+- [[_COMMUNITY_URL & Header Builders|URL & Header Builders]]
+- [[_COMMUNITY_Live Connectivity & Transcription|Live Connectivity & Transcription]]
+- [[_COMMUNITY_File Upload & Blob Management|File Upload & Blob Management]]
+- [[_COMMUNITY_REST API Method Proxies|REST API Method Proxies]]
+- [[_COMMUNITY_Image & Video Generation (MLDev)|Image & Video Generation (MLDev)]]
+- [[_COMMUNITY_Multimodal Processing (Vertex)|Multimodal Processing (Vertex)]]
+- [[_COMMUNITY_Tuning & Dataset Management|Tuning & Dataset Management]]
+- [[_COMMUNITY_Import & Batch Processing|Import & Batch Processing]]
+- [[_COMMUNITY_Predict & Operations API|Predict & Operations API]]
+- [[_COMMUNITY_Token & Content Generation|Token & Content Generation]]
+- [[_COMMUNITY_Job Cancellation & Deletion|Job Cancellation & Deletion]]
+- [[_COMMUNITY_Media Download & SDK Helpers|Media Download & SDK Helpers]]
+- [[_COMMUNITY_Low-level Request Routing|Low-level Request Routing]]
+- [[_COMMUNITY_Batch Job Configuration|Batch Job Configuration]]
+- [[_COMMUNITY_Job State & History|Job State & History]]
+- [[_COMMUNITY_Chat History & Messaging|Chat History & Messaging]]
+- [[_COMMUNITY_Real-time Input & Audio|Real-time Input & Audio]]
+- [[_COMMUNITY_Video Ops (MLDev)|Video Ops (MLDev)]]
+- [[_COMMUNITY_Image Ops (Vertex)|Image Ops (Vertex)]]
+- [[_COMMUNITY_File System Helpers|File System Helpers]]
+- [[_COMMUNITY_Embeddings Batch Jobs|Embeddings Batch Jobs]]
+- [[_COMMUNITY_Recontextualization Ops|Recontextualization Ops]]
+- [[_COMMUNITY_MLDev Request Fragmenting|MLDev Request Fragmenting]]
+- [[_COMMUNITY_MLDev Request Partials|MLDev Request Partials]]
+- [[_COMMUNITY_Auth & Google Search Tools|Auth & Google Search Tools]]
+- [[_COMMUNITY_Tool Integration (MLDev)|Tool Integration (MLDev)]]
+- [[_COMMUNITY_Tool Call Metadata|Tool Call Metadata]]
+- [[_COMMUNITY_Function Call Fragmenting|Function Call Fragmenting]]
+- [[_COMMUNITY_Search & Maps Tooling|Search & Maps Tooling]]
+- [[_COMMUNITY_External Tool Providers|External Tool Providers]]
+- [[_COMMUNITY_Image Generation Logic|Image Generation Logic]]
+- [[_COMMUNITY_Options UI Form|Options UI Form]]
+- [[_COMMUNITY_PRD Specification|PRD Specification]]
+- [[_COMMUNITY_Architecture Documentation|Architecture Documentation]]
+- [[_COMMUNITY_Claude Architecture Guide|Claude Architecture Guide]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `getValueByPath()` - 317 edges
-2. `setValueByPath()` - 305 edges
-3. `isVertexAI()` - 46 edges
-4. `request()` - 37 edges
-5. `then()` - 35 edges
-6. `tModel()` - 33 edges
-7. `formatMap()` - 30 edges
-8. `get()` - 29 edges
-9. `_parse()` - 24 edges
-10. `_call()` - 24 edges
+1. `getValueByPath()` - 318 edges
+2. `setValueByPath()` - 306 edges
+3. `isVertexAI()` - 47 edges
+4. `request()` - 38 edges
+5. `then()` - 36 edges
+6. `tModel()` - 34 edges
+7. `formatMap()` - 31 edges
+8. `get()` - 30 edges
+9. `_parse()` - 25 edges
+10. `_call()` - 25 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `options.js Settings Page Script` --semantically_similar_to--> `saved_articles.json Local Library`  [AMBIGUOUS] [semantically similar]
@@ -93,223 +88,207 @@
 - `Manifest V3 security & permissions` --references--> `FastMCP CORS middleware`  [INFERRED]
   extension/manifest.json → main.py
 
-## Communities (60 total, 10 thin omitted)
+## Communities (51 total, 4 thin omitted)
 
-### Community 0 - "GenAI Core Audio/Streaming"
-Cohesion: 0.04
-Nodes (23): createModelContent(), createPartFromText(), createUserContent(), formatDestination(), getBigqueryUri(), getGcsUri(), getRequestUrl(), getRequestUrlInternal() (+15 more)
+### Community 0 - "MCP Server Testing"
+Cohesion: 0.1
+Nodes (55): _call(), _parse(), MCP server integration tests. Requires server running at http://localhost:8000., test_dashboard_route_dark(), test_dashboard_route_light(), test_fetch_all_sources(), test_fetch_dev(), test_fetch_hn() (+47 more)
 
-### Community 1 - "System Architecture & Design"
+### Community 1 - "GenAI SDK Internal Logic"
+Cohesion: 0.05
+Nodes (54): blobToMldev(), blobToMldev$4(), candidateFromMldev(), citationMetadataFromMldev(), computeTokensResponseFromVertex(), contentEmbeddingFromVertex(), contentEmbeddingStatisticsFromVertex(), controlReferenceConfigToVertex() (+46 more)
+
+### Community 2 - "MLDev & Vertex Response Mapping"
 Cohesion: 0.05
 Nodes (54): background.js Service Worker, Chrome extension icon click handler, Basic demo flow sequence, Dynamic MCP to Gemini tool binding, Fallback error handling pattern, genai.js bundled ES module, _LAST_DASHBOARD_HTML server cache, _CHART_REGISTRY (+46 more)
 
-### Community 2 - "Vertex AI Batch Jobs (A)"
-Cohesion: 0.05
-Nodes (53): batchJobDestinationToVertex(), blobToMldev(), cancelTuningJobResponseFromMldev(), candidateFromMldev(), candidateFromMldev$1(), citationMetadataFromMldev(), citationMetadataFromMldev$1(), computeTokensResponseFromVertex() (+45 more)
-
-### Community 3 - "ML Dev Content Serialization (A)"
-Cohesion: 0.05
-Nodes (50): blobToMldev$1(), blobToMldev$3(), cancelTuningJobResponseFromVertex(), contentEmbeddingFromVertex(), contentEmbeddingStatisticsFromVertex(), contentToVertex$2(), countTokensResponseFromVertex(), createCachedContentConfigToVertex() (+42 more)
-
-### Community 4 - "Content Transform Pipeline"
+### Community 3 - "IntelAgent Core Components"
 Cohesion: 0.06
-Nodes (42): cancel(), cancelBatchJobParametersToMldev(), cancelBatchJobParametersToVertex(), cancelTuningJobParametersToMldev(), cancelTuningJobParametersToVertex(), delete(), deleteBatchJobParametersToMldev(), deleteBatchJobParametersToVertex() (+34 more)
+Nodes (52): batchJobDestinationToVertex(), batchJobSourceToMldev(), batchJobSourceToVertex(), close(), convertBidiSetupToTokenSetup(), createBatchJobConfigToMldev(), createBatchJobConfigToVertex(), createBatchJobParametersToMldev() (+44 more)
 
-### Community 5 - "Frappe Charts Visualization"
-Cohesion: 0.17
-Nodes (26): _call(), _parse(), MCP server integration tests. Requires server running at http://localhost:8000., test_fetch_all_sources(), test_fetch_dev(), test_fetch_hn(), test_fetch_reddit(), test_fetch_returns_list() (+18 more)
+### Community 4 - "Vertex AI Job Management"
+Cohesion: 0.06
+Nodes (48): blobToMldev$1(), blobToMldev$2(), blobToMldev$3(), cancelTuningJobResponseFromMldev(), cancelTuningJobResponseFromVertex(), candidateFromMldev$1(), citationMetadataFromMldev$1(), countTokensResponseFromMldev() (+40 more)
 
-### Community 6 - "HTTP Client & Retry Logic"
+### Community 5 - "Part & Content Factory"
+Cohesion: 0.06
+Nodes (46): audioChunk(), codeExecutionResult(), createFunctionResponsePartFromBase64(), createPartFromBase64(), createPartFromCodeExecutionResult(), createPartFromExecutableCode(), createPartFromFunctionCall(), createPartFromUri() (+38 more)
+
+### Community 6 - "MLDev Configuration Transformers"
+Cohesion: 0.06
+Nodes (43): dashboard(), _fetch_dev(), _fetch_hn(), _fetch_reddit(), fetch_tech_news(), _load_library(), manage_local_library(), Read/write the local saved_articles.json library.      action='check_duplicates' (+35 more)
+
+### Community 7 - "Agent Curator Backend Handlers"
+Cohesion: 0.08
+Nodes (27): audioTranscriptionConfigToMldev(), audioTranscriptionConfigToMldev$1(), contentToMldev(), contentToMldev$2(), contentToMldev$4(), contentToVertex$1(), createAuthTokenConfigToMldev(), createAuthTokenParametersToMldev() (+19 more)
+
+### Community 8 - "SDK Auth & Metadata Handling"
 Cohesion: 0.13
 Nodes (26): __asyncGenerator(), __asyncValues(), __await(), callTool(), concatBytes(), decode(), decodeUTF8(), encodeUTF8() (+18 more)
 
-### Community 7 - "API Connection & Auth Config"
+### Community 9 - "HTTP Request & Retry Logic"
+Cohesion: 0.12
+Nodes (25): generatedVideoFromMldev(), generatedVideoFromMldev$1(), generatedVideoFromVertex$1(), generateVideosConfigToMldev(), generateVideosConfigToVertex(), generateVideosInternal(), generateVideosParametersToMldev(), generateVideosParametersToVertex() (+17 more)
+
+### Community 10 - "Streaming & SSE Processing"
+Cohesion: 0.09
+Nodes (24): cancel(), cancelBatchJobParametersToMldev(), cancelBatchJobParametersToVertex(), cancelTuningJobParametersToMldev(), cancelTuningJobParametersToVertex(), delete(), deleteBatchJobParametersToMldev(), deleteBatchJobParametersToVertex() (+16 more)
+
+### Community 11 - "Extension Sidepanel Controller"
+Cohesion: 0.09
+Nodes (23): asResponse(), calculateDefaultRetryTimeoutMillis(), CancelReadableStream(), defaultParseResponse(), fetchWithTimeout(), finally(), fromSSEResponse(), generate() (+15 more)
+
+### Community 12 - "Extension Dashboard Interface"
 Cohesion: 0.1
-Nodes (25): connect(), getApiKey(), getApiVersion(), getBaseUrl(), getCustomBaseUrl(), getDefaultHeaders(), getHeaders(), getNextGenClient() (+17 more)
+Nodes (22): listBatchJobsConfigToMldev(), listBatchJobsConfigToVertex(), listBatchJobsParametersToMldev(), listBatchJobsParametersToVertex(), listCachedContentsConfigToMldev(), listCachedContentsConfigToVertex(), listCachedContentsParametersToMldev(), listCachedContentsParametersToVertex() (+14 more)
 
-### Community 8 - "Batch/Cache List Operations"
-Cohesion: 0.13
-Nodes (23): computeTokens(), computeTokensParametersToVertex(), contentToVertex(), countTokens(), countTokensConfigToMldev(), countTokensConfigToVertex(), countTokensParametersToMldev(), countTokensParametersToVertex() (+15 more)
+### Community 13 - "URL & Header Builders"
+Cohesion: 0.12
+Nodes (20): contentToMldev$1(), contentToVertex(), contentToVertex$2(), countTokensConfigToVertex(), createCachedContentConfigToVertex(), embedContentBatchToMldev(), embedContentConfigToMldev(), embedContentConfigToMldev$1() (+12 more)
 
-### Community 9 - "Side Panel Agentic Loop"
-Cohesion: 0.11
-Nodes (20): listBatchJobsConfigToMldev(), listBatchJobsConfigToVertex(), listBatchJobsParametersToMldev(), listBatchJobsParametersToVertex(), listCachedContentsConfigToMldev(), listCachedContentsConfigToVertex(), listCachedContentsParametersToMldev(), listCachedContentsParametersToVertex() (+12 more)
-
-### Community 10 - "Backend MCP Tools & Routes"
+### Community 14 - "Live Connectivity & Transcription"
 Cohesion: 0.19
 Nodes (15): appendGemini(), callMcpTool(), checkServer(), clearGemini(), loadMcpTools(), mcpInitialize(), mcpRequest(), mcpToolsToFunctionDeclarations() (+7 more)
 
-### Community 11 - "Async Generator Utilities"
-Cohesion: 0.14
-Nodes (18): dashboard(), _fetch_dev(), _fetch_hn(), _fetch_reddit(), fetch_tech_news(), _load_library(), manage_local_library(), Read/write the local saved_articles.json library.      action='check_duplicates' (+10 more)
+### Community 15 - "File Upload & Blob Management"
+Cohesion: 0.13
+Nodes (19): connect(), getApiKey(), getApiVersion(), getBaseUrl(), getCustomBaseUrl(), getDefaultHeaders(), getHeaders(), getNextGenClient() (+11 more)
 
-### Community 12 - "File Download & Upload"
+### Community 16 - "REST API Method Proxies"
+Cohesion: 0.2
+Nodes (14): appendChatMessage(), callMcpTool(), checkServer(), loadMcpTools(), mcpInitialize(), mcpRequest(), mcpToolsToFunctionDeclarations(), parseSseResponse() (+6 more)
+
+### Community 17 - "Image & Video Generation (MLDev)"
 Cohesion: 0.12
 Nodes (18): addAuthHeaders(), authHeaders(), baseURLOverridden(), buildBody(), buildHeaders(), buildRequest(), buildURL(), defaultIdempotencyKey() (+10 more)
 
-### Community 13 - "Content Serialization (B)"
-Cohesion: 0.18
-Nodes (18): generateVideosConfigToMldev(), generateVideosConfigToVertex(), generateVideosInternal(), generateVideosParametersToMldev(), generateVideosParametersToVertex(), generateVideosSourceToMldev(), generateVideosSourceToVertex(), imageToMldev() (+10 more)
-
-### Community 14 - "Image/Video Generation"
-Cohesion: 0.12
-Nodes (17): audioTranscriptionConfigToMldev(), audioTranscriptionConfigToMldev$1(), contentToMldev(), contentToMldev$2(), contentToVertex$1(), createAuthTokenConfigToMldev(), createAuthTokenParametersToMldev(), generationConfigToVertex$1() (+9 more)
-
-### Community 15 - "HTTP Request Builder"
+### Community 18 - "Multimodal Processing (Vertex)"
 Cohesion: 0.16
 Nodes (17): crossError(), download(), downloadFile(), fetchUploadUrl(), getBlobStat(), getFileName(), json(), sleep$1() (+9 more)
 
-### Community 16 - "Video Generation (Vertex)"
-Cohesion: 0.13
-Nodes (15): createFileParametersToMldev(), createInternal(), formatMap(), getInternal(), getTuningJobParametersToMldev(), getTuningJobParametersToVertex(), importFile(), importFileConfigToMldev() (+7 more)
-
-### Community 17 - "Delete & Internal Operations"
-Cohesion: 0.19
-Nodes (15): fetchPredictOperationParametersToVertex(), fetchPredictVideosOperationInternal(), _fromAPIResponse(), getLocation(), getOperationParametersToMldev(), getOperationParametersToVertex(), getProject(), getVideosOperation() (+7 more)
-
-### Community 18 - "Video Operation Fetch"
-Cohesion: 0.19
-Nodes (14): contentToMldev$4(), flattenTypeArrayToAnyOf(), generateContentConfigToMldev(), generateContentConfigToMldev$1(), generateContentConfigToVertex(), imageConfigToMldev(), imageConfigToMldev$1(), imageConfigToVertex() (+6 more)
-
-### Community 19 - "Token Count & Media Download"
-Cohesion: 0.18
-Nodes (14): constructUrl(), createTuningJobParametersPrivateToVertex(), downloadMedia(), getBaseResourcePath(), includeExtraHttpOptionsToRequestInit(), patchHttpOptions(), request(), requestStream() (+6 more)
-
-### Community 20 - "API Call & Tuning Get"
+### Community 19 - "Tuning & Dataset Management"
 Cohesion: 0.15
-Nodes (13): CancelReadableStream(), defaultParseResponse(), fetchWithTimeout(), fromSSEResponse(), generate(), isAbortError(), loggerFor(), _makeAbort() (+5 more)
+Nodes (17): create(), createFileSearchStoreConfigToMldev(), createFileSearchStoreParametersToMldev(), get(), getDocumentParametersToMldev(), getFileSearchStoreParametersToMldev(), getModelParametersToMldev(), getModelParametersToVertex() (+9 more)
 
-### Community 21 - "Batch Job Source Config"
+### Community 20 - "Import & Batch Processing"
+Cohesion: 0.18
+Nodes (16): computeTokens(), computeTokensParametersToVertex(), countTokens(), countTokensConfigToMldev(), countTokensParametersToMldev(), countTokensParametersToVertex(), generateContentInternal(), generateContentParametersToMldev() (+8 more)
+
+### Community 21 - "Predict & Operations API"
 Cohesion: 0.17
-Nodes (12): contentToMldev$1(), createEmbeddingsBatchJobConfigToMldev(), createEmbeddingsBatchJobParametersToMldev(), createEmbeddingsInternal(), embedContentBatchToMldev(), embedContentConfigToMldev(), embedContentConfigToMldev$1(), embedContentInternal() (+4 more)
+Nodes (16): createCachedContentParametersToVertex(), downloadMedia(), fetchPredictOperationParametersToVertex(), fetchPredictVideosOperationInternal(), getLocation(), getOperationParametersToMldev(), getOperationParametersToVertex(), getProject() (+8 more)
 
-### Community 22 - "Token Compute & Image Edit"
-Cohesion: 0.25
-Nodes (11): apiCall(), catch(), generateImagesConfigToMldev(), generateImagesInternal(), generateImagesParametersToMldev(), getHistory(), sendMessage(), sendMessageStream() (+3 more)
+### Community 22 - "Token & Content Generation"
+Cohesion: 0.13
+Nodes (15): createTuningJobParametersPrivateToVertex(), embedContentInternal(), formatMap(), internalRegisterFilesParametersToMldev(), registerFiles(), registerFilesInternal(), segmentImage(), segmentImageConfigToVertex() (+7 more)
 
-### Community 23 - "Job Cancel Operations"
+### Community 23 - "Job Cancellation & Deletion"
+Cohesion: 0.21
+Nodes (12): apiCall(), catch(), importFile(), importFileConfigToMldev(), importFileParametersToMldev(), sendMessageStream(), streamApiCall(), then() (+4 more)
+
+### Community 24 - "Media Download & SDK Helpers"
+Cohesion: 0.21
+Nodes (12): constructUrl(), createFileParametersToMldev(), createInternal(), getBaseResourcePath(), getInternal(), getTuningJobParametersToMldev(), getTuningJobParametersToVertex(), includeExtraHttpOptionsToRequestInit() (+4 more)
+
+### Community 25 - "Low-level Request Routing"
 Cohesion: 0.22
-Nodes (10): asResponse(), calculateDefaultRetryTimeoutMillis(), finally(), handleWebSocketMessage(), handleWebSocketMessage$1(), includeExtraBodyToRequestInit(), parse(), retryRequest() (+2 more)
+Nodes (9): _fromAPIResponse(), generateVideosOperationFromMldev$1(), generateVideosOperationFromVertex$1(), generateVideosResponseFromMldev$1(), generateVideosResponseFromVertex$1(), importFileOperationFromMldev$1(), importFileResponseFromMldev$1(), uploadToFileSearchStoreOperationFromMldev() (+1 more)
 
-### Community 24 - "Pagination Constructor"
-Cohesion: 0.22
-Nodes (9): batchJobSourceToMldev(), batchJobSourceToVertex(), createBatchJobConfigToMldev(), createBatchJobConfigToVertex(), createBatchJobParametersToMldev(), createBatchJobParametersToVertex(), createInlinedGenerateContentRequest(), tBatchJobDestination() (+1 more)
-
-### Community 25 - "Live Realtime Audio Input"
+### Community 26 - "Batch Job Configuration"
 Cohesion: 0.29
 Nodes (8): batchJobDestinationFromMldev(), batchJobDestinationFromVertex(), batchJobFromMldev(), batchJobFromVertex(), batchJobSourceFromVertex(), tJobState(), tRecvBatchJobDestination(), vertexMultimodalDatasetDestinationFromVertex()
 
-### Community 26 - "Batch Job Serialization"
+### Community 27 - "Job State & History"
 Cohesion: 0.25
 Nodes (8): constructor(), getDefaultFetch(), hasNextPage(), init(), initNextPage(), makeMessage(), nextPage(), validateHistory()
 
-### Community 27 - "Chat History Management"
-Cohesion: 0.29
-Nodes (7): convertBidiSetupToTokenSetup(), create(), createFileSearchStoreConfigToMldev(), createFileSearchStoreParametersToMldev(), getFieldMasks(), isMcpClient(), mcpToTool()
-
-### Community 28 - "Auth Headers"
+### Community 28 - "Chat History & Messaging"
 Cohesion: 0.52
 Nodes (7): liveSendRealtimeInputParametersToMldev(), liveSendRealtimeInputParametersToVertex(), sendRealtimeInput(), tAudioBlob(), tBlob(), tBlobs(), tImageBlob()
 
-### Community 29 - "File Meta Operations"
-Cohesion: 0.4
-Nodes (5): generatedImageFromVertex(), generatedImageMaskFromVertex(), generateImagesResponseFromVertex(), imageFromVertex(), safetyAttributesFromVertex()
+### Community 29 - "Real-time Input & Audio"
+Cohesion: 0.33
+Nodes (6): extractCuratedHistory(), getHistory(), isValidContent(), isValidResponse(), recordHistory(), sendMessage()
 
-### Community 30 - "File Byte Utilities"
+### Community 30 - "Video Ops (MLDev)"
 Cohesion: 0.4
 Nodes (5): contentToMldev$3(), createCachedContentConfigToMldev(), createCachedContentParametersToMldev(), functionCallingConfigToMldev$1(), toolConfigToMldev$1()
 
-### Community 31 - "Image Generation (Vertex)"
+### Community 31 - "Image Ops (Vertex)"
 Cohesion: 0.4
-Nodes (5): generatedVideoFromMldev$1(), generatedVideoFromVertex$1(), tBytes$1(), videoFromMldev$1(), videoFromVertex$1()
+Nodes (5): generatedImageFromVertex(), generatedImageMaskFromVertex(), generateImagesResponseFromVertex(), imageFromVertex(), safetyAttributesFromVertex()
 
-### Community 32 - "Video Bytes Serialization"
+### Community 32 - "File System Helpers"
 Cohesion: 0.4
 Nodes (5): getBytes(), getName(), makeFile(), propsForError(), toFile()
 
-### Community 33 - "Model Tuning (MLDev)"
-Cohesion: 0.5
-Nodes (4): authConfigToMldev$1(), googleMapsToMldev$1(), googleSearchToMldev$1(), toolToMldev$1()
-
-### Community 34 - "Image Recontextualize (Vertex)"
-Cohesion: 0.5
-Nodes (4): authConfigToMldev(), googleMapsToMldev(), googleSearchToMldev(), toolToMldev()
-
-### Community 35 - "Part Transform Variant D"
-Cohesion: 0.5
-Nodes (4): authConfigToMldev$4(), googleMapsToMldev$4(), googleSearchToMldev$4(), toolToMldev$4()
-
-### Community 36 - "Part Transform Variant A"
-Cohesion: 0.5
-Nodes (4): authConfigToMldev$3(), googleMapsToMldev$3(), googleSearchToMldev$3(), toolToMldev$3()
-
-### Community 37 - "Tool Config Variant C"
-Cohesion: 0.5
-Nodes (4): tTuningJobStatus(), tunedModelFromMldev(), tuningJobFromMldev(), tuningJobFromVertex()
-
-### Community 38 - "Tool Config Variant A"
-Cohesion: 0.5
-Nodes (4): blobToMldev$4(), fileDataToMldev$4(), functionCallToMldev$4(), partToMldev$4()
-
-### Community 39 - "Tool Config Variant B"
-Cohesion: 0.5
-Nodes (4): blobToMldev$2(), fileDataToMldev$2(), functionCallToMldev$2(), partToMldev$2()
-
-### Community 40 - "Tool Config Variant D"
-Cohesion: 0.5
-Nodes (4): generatedImageFromMldev(), generateImagesResponseFromMldev(), imageFromMldev(), safetyAttributesFromMldev()
-
-### Community 41 - "Tuned Model Serialization"
+### Community 33 - "Embeddings Batch Jobs"
 Cohesion: 0.5
 Nodes (4): authConfigToMldev$2(), googleMapsToMldev$2(), googleSearchToMldev$2(), toolToMldev$2()
 
-### Community 42 - "Tool Config Variant E"
+### Community 34 - "Recontextualization Ops"
 Cohesion: 0.5
-Nodes (4): hasField(), listModelsResponseFromMldev(), listModelsResponseFromVertex(), tExtractModels()
+Nodes (4): generatedImageFromMldev(), generateImagesResponseFromMldev(), imageFromMldev(), safetyAttributesFromMldev()
 
-### Community 43 - "Image Generation (MLDev)"
+### Community 35 - "MLDev Request Fragmenting"
 Cohesion: 0.5
-Nodes (4): createTuningJobConfigToMldev(), createTuningJobParametersPrivateToMldev(), tuneMldevInternal(), tuningDatasetToMldev()
+Nodes (4): authConfigToMldev(), googleMapsToMldev(), googleSearchToMldev(), toolToMldev()
 
-### Community 44 - "Model Tuning (Vertex)"
+### Community 36 - "MLDev Request Partials"
+Cohesion: 0.5
+Nodes (4): authConfigToMldev$3(), googleMapsToMldev$3(), googleSearchToMldev$3(), toolToMldev$3()
+
+### Community 37 - "Auth & Google Search Tools"
+Cohesion: 0.5
+Nodes (4): authConfigToMldev$1(), googleMapsToMldev$1(), googleSearchToMldev$1(), toolToMldev$1()
+
+### Community 38 - "Tool Integration (MLDev)"
+Cohesion: 0.5
+Nodes (4): authConfigToMldev$4(), googleMapsToMldev$4(), googleSearchToMldev$4(), toolToMldev$4()
+
+### Community 39 - "Tool Call Metadata"
 Cohesion: 0.5
 Nodes (4): recontextImage(), recontextImageConfigToVertex(), recontextImageParametersToVertex(), recontextImageSourceToVertex()
 
-### Community 45 - "Image Upscale (Vertex)"
-Cohesion: 0.67
-Nodes (3): controlReferenceConfigToVertex(), maskReferenceConfigToVertex(), referenceImageAPIInternalToVertex()
+### Community 40 - "Function Call Fragmenting"
+Cohesion: 0.5
+Nodes (4): createEmbeddingsBatchJobConfigToMldev(), createEmbeddingsBatchJobParametersToMldev(), createEmbeddingsInternal(), embeddingsBatchJobSourceToMldev()
 
-### Community 46 - "Embeddings Batch Job"
+### Community 41 - "Search & Maps Tooling"
+Cohesion: 0.5
+Nodes (4): createTuningJobConfigToMldev(), createTuningJobParametersPrivateToMldev(), tuneMldevInternal(), tuningDatasetToMldev()
+
+### Community 42 - "External Tool Providers"
 Cohesion: 0.67
 Nodes (3): editImageConfigToVertex(), editImageInternal(), editImageParametersInternalToVertex()
 
-### Community 47 - "Image Segmentation (Vertex)"
+### Community 43 - "Image Generation Logic"
 Cohesion: 0.67
-Nodes (3): internalRegisterFilesParametersToMldev(), registerFiles(), registerFilesInternal()
+Nodes (3): generateImagesConfigToVertex(), generateImagesInternal(), generateImagesParametersToVertex()
 
 ## Ambiguous Edges - Review These
 - `options.js Settings Page Script` → `saved_articles.json Local Library`  [AMBIGUOUS]
   extension/options.js · relation: semantically_similar_to
 
 ## Knowledge Gaps
-- **33 isolated node(s):** `Primary tool for DEVELOPER TRENDS and COMMUNITY DISCUSSION.     Use this for: "W`, `Read/write the local saved_articles.json library.      action='check_duplicates'`, `Compile curated articles and data into a professional dashboard.      Each card:`, `Serve last rendered Prefab dashboard HTML with theme support.`, `Theme toggle UI` (+28 more)
+- **47 isolated node(s):** `MCP server integration tests. Requires server running at http://localhost:8000.`, `Fetch from Hacker News (Algolia).`, `Fetch articles from multiple sources.      source: 'hn' (Hacker News), 'dev' (De`, `Read/write the local saved_articles.json library.      action='check_duplicates'`, `Lowercase type, convert labels/values simple format, normalize keys, enable lege` (+42 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **10 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **4 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `options.js Settings Page Script` and `saved_articles.json Local Library`?**
   _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
-- **Why does `getValueByPath()` connect `ML Dev Content Serialization (A)` to `GenAI Core Audio/Streaming`, `Vertex AI Batch Jobs (A)`, `Content Transform Pipeline`, `HTTP Client & Retry Logic`, `Batch/Cache List Operations`, `Side Panel Agentic Loop`, `Content Serialization (B)`, `Image/Video Generation`, `Video Generation (Vertex)`, `Delete & Internal Operations`, `Video Operation Fetch`, `Token Count & Media Download`, `Batch Job Source Config`, `Token Compute & Image Edit`, `Pagination Constructor`, `Live Realtime Audio Input`, `Chat History Management`, `Auth Headers`, `File Meta Operations`, `File Byte Utilities`, `Image Generation (Vertex)`, `Model Tuning (MLDev)`, `Image Recontextualize (Vertex)`, `Part Transform Variant D`, `Part Transform Variant A`, `Tool Config Variant C`, `Tool Config Variant A`, `Tool Config Variant B`, `Tool Config Variant D`, `Tuned Model Serialization`, `Tool Config Variant E`, `Image Generation (MLDev)`, `Model Tuning (Vertex)`, `Image Upscale (Vertex)`, `Embeddings Batch Job`, `Image Segmentation (Vertex)`, `File Register Operations`, `Embeddings Batch Source`, `Multi-Source Fetch Tests`, `MCP Connectivity Tests`, `Chrome Extension Background`, `Options Page Script`?**
-  _High betweenness centrality (0.064) - this node is a cross-community bridge._
-- **Why does `setValueByPath()` connect `Vertex AI Batch Jobs (A)` to `GenAI Core Audio/Streaming`, `ML Dev Content Serialization (A)`, `Content Transform Pipeline`, `HTTP Client & Retry Logic`, `Batch/Cache List Operations`, `Side Panel Agentic Loop`, `Content Serialization (B)`, `Image/Video Generation`, `Video Generation (Vertex)`, `Delete & Internal Operations`, `Video Operation Fetch`, `Token Count & Media Download`, `Batch Job Source Config`, `Token Compute & Image Edit`, `Pagination Constructor`, `Live Realtime Audio Input`, `Chat History Management`, `Auth Headers`, `File Meta Operations`, `File Byte Utilities`, `Image Generation (Vertex)`, `Model Tuning (MLDev)`, `Image Recontextualize (Vertex)`, `Part Transform Variant D`, `Part Transform Variant A`, `Tool Config Variant C`, `Tool Config Variant A`, `Tool Config Variant B`, `Tool Config Variant D`, `Tuned Model Serialization`, `Tool Config Variant E`, `Image Generation (MLDev)`, `Model Tuning (Vertex)`, `Image Upscale (Vertex)`, `Embeddings Batch Job`, `Image Segmentation (Vertex)`, `File Register Operations`, `Embeddings Batch Source`, `Multi-Source Fetch Tests`, `MCP Connectivity Tests`, `Chrome Extension Background`, `Options Page Script`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **What connects `Primary tool for DEVELOPER TRENDS and COMMUNITY DISCUSSION.     Use this for: "W`, `Read/write the local saved_articles.json library.      action='check_duplicates'`, `Compile curated articles and data into a professional dashboard.      Each card:` to the rest of the system?**
-  _33 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `GenAI Core Audio/Streaming` be split into smaller, more focused modules?**
-  _Cohesion score 0.04 - nodes in this community are weakly interconnected._
-- **Should `System Architecture & Design` be split into smaller, more focused modules?**
+- **Why does `getValueByPath()` connect `Vertex AI Job Management` to `GenAI SDK Internal Logic`, `IntelAgent Core Components`, `Part & Content Factory`, `Agent Curator Backend Handlers`, `SDK Auth & Metadata Handling`, `HTTP Request & Retry Logic`, `Streaming & SSE Processing`, `Extension Dashboard Interface`, `URL & Header Builders`, `Tuning & Dataset Management`, `Import & Batch Processing`, `Predict & Operations API`, `Token & Content Generation`, `Job Cancellation & Deletion`, `Media Download & SDK Helpers`, `Low-level Request Routing`, `Batch Job Configuration`, `Chat History & Messaging`, `Video Ops (MLDev)`, `Image Ops (Vertex)`, `Embeddings Batch Jobs`, `Recontextualization Ops`, `MLDev Request Fragmenting`, `MLDev Request Partials`, `Auth & Google Search Tools`, `Tool Integration (MLDev)`, `Tool Call Metadata`, `Function Call Fragmenting`, `Search & Maps Tooling`, `External Tool Providers`, `Image Generation Logic`?**
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._
+- **Why does `setValueByPath()` connect `GenAI SDK Internal Logic` to `IntelAgent Core Components`, `Vertex AI Job Management`, `Part & Content Factory`, `Agent Curator Backend Handlers`, `SDK Auth & Metadata Handling`, `HTTP Request & Retry Logic`, `Streaming & SSE Processing`, `Extension Dashboard Interface`, `URL & Header Builders`, `Tuning & Dataset Management`, `Import & Batch Processing`, `Predict & Operations API`, `Token & Content Generation`, `Job Cancellation & Deletion`, `Media Download & SDK Helpers`, `Low-level Request Routing`, `Batch Job Configuration`, `Chat History & Messaging`, `Video Ops (MLDev)`, `Image Ops (Vertex)`, `Embeddings Batch Jobs`, `Recontextualization Ops`, `MLDev Request Fragmenting`, `MLDev Request Partials`, `Auth & Google Search Tools`, `Tool Integration (MLDev)`, `Tool Call Metadata`, `Function Call Fragmenting`, `Search & Maps Tooling`, `External Tool Providers`, `Image Generation Logic`?**
+  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+- **What connects `MCP server integration tests. Requires server running at http://localhost:8000.`, `Fetch from Hacker News (Algolia).`, `Fetch articles from multiple sources.      source: 'hn' (Hacker News), 'dev' (De` to the rest of the system?**
+  _47 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `MCP Server Testing` be split into smaller, more focused modules?**
+  _Cohesion score 0.1 - nodes in this community are weakly interconnected._
+- **Should `GenAI SDK Internal Logic` be split into smaller, more focused modules?**
   _Cohesion score 0.05 - nodes in this community are weakly interconnected._
-- **Should `Vertex AI Batch Jobs (A)` be split into smaller, more focused modules?**
+- **Should `MLDev & Vertex Response Mapping` be split into smaller, more focused modules?**
   _Cohesion score 0.05 - nodes in this community are weakly interconnected._
