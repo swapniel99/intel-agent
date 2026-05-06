@@ -152,7 +152,7 @@ Intent classification:
   - Gather data → PROACTIVELY identify quantitative metrics (counts, shares, trends) → include a chart → render_prefab_dashboard
 
 Rules (CRITICAL):
-- ALWAYS call 'render_prefab_dashboard' at the end of EVERY turn. It is MANDATORY.
+- ALWAYS call 'render_prefab_dashboard' when you are finished and ready to show the results to the user. This is MANDATORY for providing your final answer.
 - Put your complete response to the user in the 'ai_answer' parameter of render_prefab_dashboard. Do NOT emit text outside of tool calls — the dashboard is the only output surface.
 - Include a chart ONLY when the user explicitly asks for analysis/comparison/trends OR when the fetched data has meaningful quantitative differences worth visualizing. Pure news/article fetches: NO chart.
 - ai_answer: 2-3 sentences max, prose only, no code blocks.
@@ -195,12 +195,29 @@ Rules (CRITICAL):
     const toolCalls = response.functionCalls;
 
     if (!toolCalls || toolCalls.length === 0) {
-      setStatus("Done.", "success");
+      const textResponse = parts.map(p => p.text || "").join("\n").trim();
+      if (textResponse) {
+        setStatus("Rendering fallback…");
+        try {
+          await callMcpTool("render_prefab_dashboard", {
+            cards: [],
+            topic: "Research Result",
+            ai_answer: textResponse
+          });
+          renderDashboard();
+          setStatus("Done.", "success");
+        } catch (err) {
+          setStatus(`Fallback Error: ${err.message}`, "error");
+        }
+      } else {
+        setStatus("Done.", "success");
+      }
       return;
     }
 
     const toolResponseParts = [];
 
+    let dashboardRendered = false;
     for (const call of toolCalls) {
       const { name, args } = call;
 
@@ -213,6 +230,7 @@ Rules (CRITICAL):
 
       if (name === "render_prefab_dashboard" && toolResult?.status === "dashboard_ready") {
         renderDashboard();
+        dashboardRendered = true;
       }
 
       toolResponseParts.push({
@@ -221,6 +239,11 @@ Rules (CRITICAL):
           response: { content: toolResult },
         },
       });
+    }
+
+    if (dashboardRendered) {
+      setStatus("Done.", "success");
+      return;
     }
 
     contents.push({ role: "user", parts: toolResponseParts });
