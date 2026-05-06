@@ -181,23 +181,22 @@ Pick tools based on the user's intent.
 
 Intent classification:
 - HYBRID_RESEARCH: latest info + saved knowledge.
-  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → MERGE all results → manage_local_library(save_new) → render_prefab_dashboard
+  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → MERGE all results → manage_local_library(save_new) → render_dashboard(cards=[...])
 - ARTICLE_CURATION: list/feed/digest of new articles.
-  → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_prefab_dashboard
+  → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_dashboard(cards=[...])
 - LIBRARY_MANAGEMENT: browse, search, or clean local collection.
-  → render_prefab_dashboard
+  → render_dashboard(cards=[...])
 - METRICS_ANALYSIS: KPIs, comparisons, benchmarks, market data, structured data reports.
-  → gather data (Google Search / fetch_tech_news) → identify metrics, trends, rankings → render_rich_dashboard
+  → gather data (Google Search / fetch_tech_news) → identify metrics, trends, rankings → render_dashboard(metrics=[...], chart=..., layout="auto")
 - TREND_ANALYSIS: charts + data visualization with metrics.
-  → gather data → identify quantitative metrics (counts, shares, trends) → render_rich_dashboard
+  → gather data → identify quantitative metrics → render_dashboard(chart=..., metrics=[...], layout="auto")
 
 Rules (CRITICAL):
-- ALWAYS call a render tool when finished. Choose ONE:
-  • render_prefab_dashboard — article cards + optional chart. Use for news feeds, digests, library views.
-  • render_rich_dashboard — KPI metrics, tables, charts, analysis. Use when the user wants metrics, comparisons, data reports, or any non-card layout.
-- Do NOT emit text outside of tool calls — the dashboard is the only output surface.
-- render_prefab_dashboard: put your full response in 'ai_answer' (2-3 sentences, prose only). Include a chart ONLY for quantitative comparisons/trends.
-- render_rich_dashboard: put your response in 'summary'. Choose layout: "kpi_grid" (metrics first), "chart_focus" (chart first), "table_report" (table first), "split" (chart+metrics side by side).
+- ALWAYS call render_dashboard when finished. It is the only output surface.
+- Do NOT emit text outside of tool calls.
+- summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
+- Use cards for article feeds. Use metrics for KPI numbers. Use chart for visualizations. Use table for comparisons.
+- layout="auto" always works — backend picks the best layout. Only set layout explicitly for "split".
 `;
 
   const MAX_TURNS = 12;
@@ -216,7 +215,7 @@ Rules (CRITICAL):
         ],
         toolConfig: {
           functionCallingConfig: forceFinish
-            ? { mode: "ANY", allowedFunctionNames: ["render_prefab_dashboard", "render_rich_dashboard"] }
+            ? { mode: "ANY", allowedFunctionNames: ["render_dashboard"] }
             : { mode: "AUTO" },
           ...(!forceFinish && {
             googleSearchRetrieval: {
@@ -243,10 +242,9 @@ Rules (CRITICAL):
       if (textResponse) {
         setStatus("Rendering fallback…");
         try {
-          await callMcpTool("render_prefab_dashboard", {
-            cards: [],
-            topic: "Research Result",
-            ai_answer: textResponse
+          await callMcpTool("render_dashboard", {
+            title: "Research Result",
+            summary: textResponse
           });
           renderDashboard();
           setStatus("Done.", "success");
@@ -275,7 +273,7 @@ Rules (CRITICAL):
         toolResult = { error: err.message };
       }
 
-      if ((name === "render_prefab_dashboard" || name === "render_rich_dashboard") && toolResult?.status === "dashboard_ready") {
+      if (name === "render_dashboard" && toolResult?.status === "dashboard_ready") {
         console.log(`  → dashboard rendered`);
         renderDashboard();
         dashboardRendered = true;
