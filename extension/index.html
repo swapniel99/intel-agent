@@ -348,10 +348,12 @@
       font-size: 13px;
       padding: 8px 10px;
       outline: none;
-      resize: none;
-      max-height: 40px;
+      resize: vertical;
+      min-height: 40px;
+      max-height: 200px;
       transition: border-color 0.2s;
       line-height: 1.4;
+      overflow-y: auto;
     }
 
     #prompt-input:focus { border-color: var(--accent); }

@@ -462,6 +462,11 @@ $promptInput.addEventListener("keydown", e => {
   }
 });
 
+$promptInput.addEventListener("input", () => {
+  $promptInput.style.height = "auto";
+  $promptInput.style.height = Math.min($promptInput.scrollHeight, 200) + "px";
+});
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes[API_KEY_STORAGE]?.newValue) {
     geminiApiKey = changes[API_KEY_STORAGE].newValue;
