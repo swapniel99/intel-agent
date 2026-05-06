@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Dashboard rendering: final tool result (`render_prefab_dashboard`) → backend populates `_LAST_DASHBOARD_HTML` → right panel sets `iframe.src` to `http://localhost:8000/dashboard?theme=...`
 - `background.js` opens extension window on icon click
 - `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
-- Gemini API key stored in `chrome.storage.local`, configured via options page
+- Gemini API key + MCP server URL stored in `chrome.storage.local`. Configurable via inline settings panel (gear icon in main UI) or `options.html` (manifest `options_page`)
 - Model: `gemini-3.1-flash-lite-preview` (configured in `index.js`)
 - No package manager / build step — plain ES modules
 - Theme: dark/light mode toggle in UI, applied to dashboard iframe via query parameter
@@ -29,8 +29,8 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 **3 MCP tools** (web search delegated to Gemini built-in `googleSearch`, not MCP):
 | Tool | Type | Details |
 |---|---|---|
-| `fetch_tech_news` | Internet | GET `hn.algolia.com/api/v1/search?query={q}&hitsPerPage={n}` → `[{title,url,points}]`. Falls back to `saved_articles.json` on failure. |
-| `manage_local_library` | File CRUD | `action="check_duplicates"` or `"save_new"` on `saved_articles.json` (deduplicates by URL) |
+| `fetch_tech_news` | Internet | Fetches from HN (Algolia), Dev.to, or Reddit; `source` param: `"hn"` \| `"dev"` \| `"reddit"` \| `"all"` (default). Returns `[{title,url,points,source}]`. Falls back to `saved_articles.json` on failure. |
+| `manage_local_library` | File CRUD | 6 actions on `saved_articles.json`: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. Deduplicates by URL. |
 | `render_prefab_dashboard` | UI | Compiles articles + topic/theme into dashboard spec (supports Bar, Line, Area, Pie, Radar, Radial charts) |
 
 `search_internet` (DuckDuckGo via `ddgs`) removed. Replaced by Gemini native `googleSearch` tool wired in `index.js`.
@@ -53,7 +53,7 @@ uv sync                   # installs fastmcp, httpx, prefab-ui, uvicorn from uv.
 ./.venv/bin/python main.py            # http://localhost:8000 (streamable-http transport)
 
 # Backend — verify server connectivity
-./.venv/bin/python test_mcp.py        # async Streamable-HTTP client test → lists tools from running server
+./.venv/bin/python test_mcp_server.py  # async Streamable-HTTP client test → lists tools from running server
 
 # Backend — run tests (when implemented)
 pytest
@@ -171,7 +171,7 @@ intel-agent/
 ./.venv/bin/python main.py
 
 # Terminal 2: Run connectivity test
-./.venv/bin/python test_mcp.py
+./.venv/bin/python test_mcp_server.py
 # Output: lists all 3 tools (fetch_tech_news, manage_local_library, render_prefab_dashboard)
 ```
 
@@ -196,7 +196,7 @@ curl -X POST http://localhost:8000/mcp \
 
 ## Troubleshooting
 
-**"Connection refused" on test_mcp.py:**
+**"Connection refused" on test_mcp_server.py:**
 - Ensure `python main.py` is running in another terminal on port 8000
 - Check firewall: `lsof -i :8000` should show uvicorn listening
 
