@@ -166,6 +166,8 @@ Rules (CRITICAL):
   const MAX_TURNS = 12;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const forceFinish = turn >= 8;
+    console.log(`[Turn ${turn + 1}] Calling Gemini${forceFinish ? " (FORCE FINISH)" : ""}…`);
     const response = await ai.models.generateContent({
       model: MODEL,
       contents,
@@ -173,19 +175,18 @@ Rules (CRITICAL):
         systemInstruction,
         tools: [
           { functionDeclarations: functionDeclarations.length ? functionDeclarations : [] },
-          { googleSearch: {} }
+          ...(forceFinish ? [] : [{ googleSearch: {} }]),
         ],
         toolConfig: {
-          functionCallingConfig: {
-            mode: "AUTO",
-          },
-          googleSearchRetrieval: {
-            dynamicRetrievalConfig: {
-              mode: "DYNAMIC",
-              dynamicThreshold: 0.3,
-            }
-          },
-          includeServerSideToolInvocations: true,
+          functionCallingConfig: forceFinish
+            ? { mode: "ANY", allowedFunctionNames: ["render_prefab_dashboard"] }
+            : { mode: "AUTO" },
+          ...(!forceFinish && {
+            googleSearchRetrieval: {
+              dynamicRetrievalConfig: { mode: "DYNAMIC", dynamicThreshold: 0.3 },
+            },
+            includeServerSideToolInvocations: true,
+          }),
         },
         generationConfig: { temperature: 0.2 },
       },
@@ -201,6 +202,7 @@ Rules (CRITICAL):
 
     if (!toolCalls || toolCalls.length === 0) {
       const textResponse = parts.map(p => p.text || "").join("\n").trim();
+      console.log(`[Turn ${turn + 1}] No tool calls. Text response: "${textResponse.slice(0, 100)}…"`);
       if (textResponse) {
         setStatus("Rendering fallback…");
         try {
@@ -215,6 +217,7 @@ Rules (CRITICAL):
           setStatus(`Fallback Error: ${err.message}`, "error");
         }
       } else {
+        console.log(`[Turn ${turn + 1}] Empty response, done.`);
         setStatus("Done.", "success");
       }
       return;
@@ -223,8 +226,10 @@ Rules (CRITICAL):
     const toolResponseParts = [];
 
     let dashboardRendered = false;
+    console.log(`[Turn ${turn + 1}] ${toolCalls.length} tool calls:`);
     for (const call of toolCalls) {
       const { name, args } = call;
+      console.log(`  - ${name}(${JSON.stringify(args).slice(0, 60)}…)`);
 
       let toolResult;
       try {
@@ -234,6 +239,7 @@ Rules (CRITICAL):
       }
 
       if (name === "render_prefab_dashboard" && toolResult?.status === "dashboard_ready") {
+        console.log(`  → dashboard rendered`);
         renderDashboard();
         dashboardRendered = true;
       }
