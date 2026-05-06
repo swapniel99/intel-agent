@@ -1,1 +1,3 @@
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+chrome.action.onClicked.addListener(() => {
+  chrome.tabs.create({ url: "index.html" });
+});

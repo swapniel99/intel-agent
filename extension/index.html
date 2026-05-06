@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IntelAgent Dashboard</title>
+  <style>
+    /* ── Theme tokens ── */
+    :root[data-theme="dark"] {
+      --bg: #0d1117;
+      --bg-elev: #161b22;
+      --bg-input: #0d1117;
+      --border: #30363d;
+      --border-dashed: #30363d;
+      --text: #c9d1d9;
+      --text-strong: #f0f6fc;
+      --text-muted: #8b949e;
+      --text-faint: #484f58;
+      --accent: #58a6ff;
+      --accent-btn: #238636;
+      --accent-btn-hover: #2ea043;
+      --btn-disabled: #21262d;
+      --ok: #3fb950;
+      --warn: #d29922;
+      --err: #f85149;
+      --tool: #a5d6ff;
+      --code: #d29922;
+      --link: #58a6ff;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #ffffff;
+      --bg-elev: #f6f8fa;
+      --bg-input: #ffffff;
+      --border: #d0d7de;
+      --border-dashed: #d0d7de;
+      --text: #24292f;
+      --text-strong: #1b1f24;
+      --text-muted: #57606a;
+      --text-faint: #8c959f;
+      --accent: #0969da;
+      --accent-btn: #1f883d;
+      --accent-btn-hover: #1a7f37;
+      --btn-disabled: #f3f4f6;
+      --ok: #1a7f37;
+      --warn: #9a6700;
+      --err: #cf222e;
+      --tool: #0969da;
+      --code: #9a6700;
+      --link: #0969da;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-elev);
+      z-index: 10;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      flex: 1;
+      color: var(--text-strong);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 8px var(--ok);
+    }
+
+    header .dot.offline { background: var(--err); box-shadow: 0 0 8px var(--err); }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-btn:hover { 
+      background: var(--bg-input);
+      border-color: var(--border);
+      color: var(--text-strong);
+    }
+    
+    .icon-btn.active { 
+      background: var(--bg-input);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── Settings panel ── */
+    #settings-panel {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-elev);
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+    }
+
+    #settings-panel.visible { display: flex; }
+
+    #settings-panel label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    #settings-panel input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #settings-panel input:focus { border-color: var(--accent); }
+
+    #settings-panel .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #save-settings-btn {
+      background: var(--accent-btn);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 20px;
+      transition: background 0.2s;
+    }
+
+    #save-settings-btn:hover { background: var(--accent-btn-hover); }
+
+    #key-status { font-size: 12px; color: var(--ok); min-height: 18px; margin-top: 4px; }
+
+    /* ── Main content ── */
+    #main-view {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      gap: 24px;
+    }
+
+    #prompt-section {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    #prompt-container {
+        display: flex;
+        gap: 12px;
+    }
+
+    #prompt-input {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 15px;
+      padding: 14px 16px;
+      outline: none;
+      resize: none;
+      min-height: 80px;
+      transition: border-color 0.2s;
+      line-height: 1.5;
+    }
+
+    #prompt-input:focus { border-color: var(--accent); }
+    #prompt-input::placeholder { color: var(--text-faint); }
+
+    #run-btn {
+      background: var(--accent-btn);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 0 24px;
+      height: 80px;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #run-btn:hover { background: var(--accent-btn-hover); }
+    #run-btn:active { transform: translateY(1px); }
+    #run-btn:disabled { background: var(--btn-disabled); color: var(--text-faint); cursor: not-allowed; }
+
+    #status-bar {
+      font-size: 13px;
+      color: var(--text-muted);
+      padding: 0 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #status-bar.error { color: var(--err); }
+    #status-bar.success { color: var(--ok); }
+
+    #prefab-container {
+      flex: 1;
+      position: relative;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    #empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--text-faint);
+      text-align: center;
+      padding: 40px;
+    }
+
+    #empty-state svg { opacity: 0.3; width: 64px; height: 64px; }
+    #empty-state p { font-size: 16px; max-width: 400px; line-height: 1.6; }
+
+    #prefab-frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: none;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1><div class="dot" id="server-dot"></div> IntelAgent</h1>
+    <button id="reset-btn" class="icon-btn" title="Reset Connection">🔄</button>
+    <button id="theme-btn" class="icon-btn" title="Toggle theme">🌙</button>
+    <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+  </header>
+
+  <div id="settings-panel">
+    <div class="setting-group">
+      <label for="api-key-input">Gemini API Key</label>
+      <input id="api-key-input" type="password" placeholder="AIza…" />
+    </div>
+    <div class="setting-group">
+      <label for="mcp-url-input">MCP Server URL</label>
+      <input id="mcp-url-input" type="text" placeholder="http://localhost:8000" />
+    </div>
+    <div class="row">
+        <button id="save-settings-btn">Save Settings</button>
+        <div id="key-status"></div>
+    </div>
+  </div>
+
+  <div id="main-view">
+    <div id="prompt-section">
+      <div id="prompt-container">
+        <textarea
+          id="prompt-input"
+          placeholder='e.g. "Fetch top 4 articles on Local LLMs. Filter duplicates, save new ones, generate a dashboard."'
+        ></textarea>
+        <button id="run-btn" disabled>Run</button>
+      </div>
+      <div id="status-bar">Checking server…</div>
+    </div>
+
+    <div id="prefab-container">
+      <div id="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M4 6h16M4 12h16M4 18h7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p>Your curated research dashboard will appear here.<br>Enter a prompt above to begin.</p>
+      </div>
+      <iframe id="prefab-frame" src="about:blank"></iframe>
+    </div>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>
