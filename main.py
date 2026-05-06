@@ -532,6 +532,11 @@ async def dashboard(request: Request) -> HTMLResponse:
 
 
 if __name__ == "__main__":
-    import uvicorn
-    app = mcp.http_app(transport="streamable-http", middleware=_cors_middleware)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import sys
+    # Default to stdio for MCP, but allow 'http' for the dashboard server
+    if len(sys.argv) > 1 and sys.argv[1] == "stdio":
+        mcp.run()
+    else:
+        import uvicorn
+        app = mcp.http_app(transport="streamable-http", middleware=_cors_middleware)
+        uvicorn.run(app, host="0.0.0.0", port=8000)
