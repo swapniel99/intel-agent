@@ -11,16 +11,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Architecture
 
 ### Frontend (Chrome Extension — Manifest V3)
-- **Side Panel** (`extension/sidepanel.html` / `sidepanel.js`) acts as Orchestrator + primary UI (persistent across tabs)
+- **Standalone Window UI** (`extension/index.html` / `index.js`) — orchestrator + primary UI in dedicated window (not side panel)
 - **Options Page** (`extension/options.html` / `options.js`) for one-time Gemini API key setup
-- `sidepanel.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
-- Dashboard rendering: final tool result (`render_prefab_dashboard`) → backend populates `_LAST_DASHBOARD_HTML` → side panel sets `iframe.src` to `http://localhost:8000/dashboard?theme=...`
-- `background.js` opens side panel on icon click via `chrome.sidePanel.open`
+- `index.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
+- **Layout:** Resizable side-by-side panels — left (70%): dashboard iframe, right (30%): chat history + prompt input (auto-resizing with height limits)
+- Dashboard rendering: final tool result (`render_prefab_dashboard`) → backend populates `_LAST_DASHBOARD_HTML` → right panel sets `iframe.src` to `http://localhost:8000/dashboard?theme=...`
+- `background.js` opens extension window on icon click
 - `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
 - Gemini API key stored in `chrome.storage.local`, configured via options page
-- Model: `gemini-3.1-flash-lite-preview` (configured in `sidepanel.js`)
+- Model: `gemini-3.1-flash-lite-preview` (configured in `index.js`)
 - No package manager / build step — plain ES modules
-- Theme: dark/light mode toggle in side panel UI, applied to dashboard iframe via query parameter
+- Theme: dark/light mode toggle in UI, applied to dashboard iframe via query parameter
 
 ### Backend (Python 3.14 + FastMCP)
 Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves the last rendered prefab HTML for iframe loading.
@@ -32,7 +33,7 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 | `manage_local_library` | File CRUD | `action="check_duplicates"` or `"save_new"` on `saved_articles.json` (deduplicates by URL) |
 | `render_prefab_dashboard` | UI | Compiles articles + topic/theme into dashboard spec (supports Bar, Line, Area, Pie, Radar, Radial charts) |
 
-`search_internet` (DuckDuckGo via `ddgs`) removed. Replaced by Gemini native `googleSearch` tool wired in `sidepanel.js:179`.
+`search_internet` (DuckDuckGo via `ddgs`) removed. Replaced by Gemini native `googleSearch` tool wired in `index.js`.
 
 **CORS:** Configured via `mcp.run(middleware=[...])` using Starlette `CORSMiddleware`. `allow_origins=["*"]`, `allow_credentials=False`. MCP protocol headers (`mcp-protocol-version`, `mcp-session-id`) explicitly listed in `allow_headers`.
 
@@ -67,38 +68,41 @@ pytest
 
 ## Key Constraints
 
-- Gemini tool binding is **dynamic** — `sidepanel.js` POSTs `tools/list` to `http://localhost:8000/mcp` at init, converts to `functionDeclarations`
-- Gemini model pinned: `gemini-3.1-flash-lite-preview` (sidepanel.js:4) — preview SKU, swap when GA
+- Gemini tool binding is **dynamic** — `index.js` POSTs `tools/list` to `http://localhost:8000/mcp` at init, converts to `functionDeclarations`
+- Gemini model pinned: `gemini-3.1-flash-lite-preview` (index.js:4) — preview SKU, swap when GA
 - MCP protocol endpoint: `POST http://localhost:8000/mcp` (FastMCP streamable-http transport, JSON-RPC 2.0)
 - Tool returns are uniform `dict` or `list[dict]` — no mixed `str|list` unions; exceptions return `[{status: "error message"}]`
 - Fallback pattern: `fetch_tech_news` returns `{status}` sentinel, never raises (keeps agent running)
-- MCP session auto-recovery: `sidepanel.js` retries on session loss, re-initializes `mcp-session-id` transparently
-- Theme: global dark/light mode toggle in side panel UI, state in `chrome.storage.local`. Passed to dashboard via `?theme=dark|light`.
+- MCP session auto-recovery: `index.js` retries on session loss, re-initializes `mcp-session-id` transparently with timeout
+- MCP request timeout: retry logic implemented; requests timeout after 20s, retry up to 2 attempts with exponential backoff
+- Conversation history: in-memory tracking (not truncated); checkpoint stack enables undo/clear without reloading
+- Theme: global dark/light mode toggle in extension UI, state in `chrome.storage.local`. Passed to dashboard via `?theme=dark|light`.
 - Theme matching: Gemini must select best-match theme from exact list (medical, security, rust, python, ai, web, cloud, data, game, crypto, hardware, linux, science, devtools, infra, default)
 - Python environment: **Mandatory** use of `./.venv/bin/python`. Always check for `.venv/` before running any command.
 - Python version pinned to 3.14 (`.python-version`)
 - Prefab dashboard rendering happens server-side, results cached in `_LAST_DASHBOARD_HTML`, served via `/dashboard`.
+- Extension window: launched via `chrome.windows.create()` on icon click (not side panel); window dims configurable.
 
 ## Project Layout
 
 ```
-agent_curator/
+intel-agent/
 ├── main.py                    # FastMCP server + 3 tools + /dashboard route
-├── test_mcp.py                # Async Streamable-HTTP client test
+├── test_mcp_server.py         # Async Streamable-HTTP client test
 ├── saved_articles.json        # Local article library (auto-created on first save)
 ├── pyproject.toml             # Python deps (fastmcp, uvicorn, httpx, prefab-ui)
 ├── uv.lock                    # Locked deps (managed by uv)
 ├── .python-version            # Python 3.14 pin
 ├── graphify-out/              # Knowledge graph
 └── extension/
-    ├── manifest.json          # MV3 — permissions: sidePanel, storage; host: localhost:8000, googleapis.com, cdn.jsdelivr.net
-    ├── sidepanel.html         # Side panel UI (orchestrator + dashboard iframe + theme toggle)
-    ├── sidepanel.js           # Gemini agentic loop + MCP proxy + Google Search + dashboard injection
-    ├── background.js          # Service worker — opens side panel on icon click
+    ├── manifest.json          # MV3 — permissions: storage; host: localhost:8000, googleapis.com, cdn.jsdelivr.net
+    ├── index.html             # Main UI (resizable chat + dashboard panels)
+    ├── index.js               # Gemini agentic loop + MCP proxy + Google Search + dashboard injection
+    ├── background.js          # Service worker — opens window on icon click
     ├── options.html           # API key settings page
     ├── options.js             # Save/load Gemini API key to chrome.storage.local
     ├── genai.js               # Bundled @google/genai ES module
-    └── lib/
+    └── icons/                 # Extension branding assets
 ```
 
 ## Code Patterns
@@ -116,14 +120,48 @@ agent_curator/
 - `manage_local_library`: `{status, articles?}` dict
 - `render_prefab_dashboard`: `{status, topic}` dict (backend caches HTML)
 
-**Frontend (extension/sidepanel.js):**
+**Frontend (extension/index.js):**
 - Init: `mcpInitialize()` → `loadMcpTools()` → convert to Gemini `functionDeclarations` schema
-- Agentic loop: `generateContent` → detect `functionCalls` → `callMcpTool()` → `functionResponse` → repeat up to 12 turns
-- Dashboard rendering: `render_prefab_dashboard` result → reload iframe with `?theme=...&t=...`
-- MCP session continuity: `mcp-session-id` header persisted; auto-recovery on session loss
-- Gemini config: MCP `functionDeclarations` + native `googleSearch` tool registered together at `sidepanel.js:179`
-- Theme: dark/light toggle wired via `chrome.storage.local`, applied to extension UI and passed to dashboard iframe.
+- Agentic loop: MAX_TURNS=12, forceFinish at turn 8 (constrains tools to `render_prefab_dashboard` only)
+  - generateContent → detect toolCalls → callMcpTool() → functionResponse → repeat
+  - Fallback: if no toolCalls + text response, render text-only dashboard
+  - System prompt enforces: always call `render_prefab_dashboard` when finished
+- Conversation history: tracked in-memory (full history), checkpoint stack for undo/clear without reload
+- Dashboard rendering: `render_prefab_dashboard` result triggers iframe reload with `?theme=...&t=...` (cache buster)
+- MCP session continuity: `mcp-session-id` header persisted; auto-recovery on session loss with retry logic + timeout
+- Gemini config: MCP `functionDeclarations` + native `googleSearch` tool registered together
+- Theme: dark/light toggle wired via `chrome.storage.local`, applied to extension UI and passed to dashboard iframe
+- UI Layout: dashboard panel (left, 70%) displays iframe; chat panel (right, 30%) shows conversation history + prompt input
 - Error state: if server unavailable, display "Server Disconnected" message (not silent failure)
+
+## UI/UX Patterns & Layout
+
+**Auto-Resizing Prompt Input:**
+- Textarea grows vertically as user types; height range: 40px min → 200px max
+- CSS: `resize: vertical; overflow-y: auto;` + JS `onInput` adjusts `style.height`
+- Prevents layout shift + keeps chat history visible while typing
+
+**Conversation Checkpoints:**
+- Undo button: revert to previous checkpoint (pops `conversationCheckpoints` stack)
+- Clear button: reset all history + checkpoints + dashboard
+- Checkpoints stored in-memory; lost on window close
+
+**Conversation History Display:**
+- Chat panel (left sidebar) logs all agent turns + user prompts
+- History truncated to 10 turns (newest kept) to limit context window
+- Cleared when user starts new agent run (prompt resubmit)
+- Use `appendGemini()` / `clearGemini()` / `getHistory()` for manipulation
+
+**Resizable Panels:**
+- `<div class="resizer">` between chat + dashboard divs enables dragging
+- Mouse drag updates `width` of left panel; right panel fills remainder
+- Stored in session state (not persisted across closes)
+
+**Dashboard Iframe Rendering:**
+- Right panel loads `http://localhost:8000/dashboard?theme={dark|light}&t={timestamp}`
+- Cache buster (`&t=...`) forces reload on new dashboard generation
+- Prefab HTML rendered server-side; iframe receives pre-built content
+- Theme parameter injected into HTML template server-side
 
 ## Testing & Verification
 
