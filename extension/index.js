@@ -193,6 +193,7 @@ Intent classification:
 
 Rules (CRITICAL):
 - ALWAYS call render_dashboard when finished. It is the only output surface.
+- PRO-ACTIVELY USE CHARTS: If you are dealing with numerical data, comparisons, or time-series, ALWAYS include a suitable chart in render_dashboard.
 - Do NOT emit text outside of tool calls.
 - summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
 - Use cards for article feeds. Use metrics for KPI numbers. Use chart for visualizations. Use table for comparisons.

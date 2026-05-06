@@ -85,6 +85,7 @@ GitHub Actions workflow in `.github/workflows/pytest.yml` runs unit tests on eve
 - Conversation history: in-memory tracking (not truncated); checkpoint stack enables undo/clear without reloading
 - Theme: global dark/light mode toggle in extension UI, state in `chrome.storage.local`. Passed to dashboard via `?theme=dark|light`.
 - Dashboard content: handled entirely by `render_dashboard` tool which returns `{"status": "dashboard_ready"}`.
+- **Data Visualization**: Pro-actively use charts in `render_dashboard` whenever numerical data, metrics, or comparisons are involved.
 - Python environment: **Mandatory** use of `./.venv/bin/python`. Always check for `.venv/` before running any command.
 - Python version pinned to 3.14 (`.python-version`)
 - Prefab dashboard rendering happens server-side, results cached in `_LAST_DASHBOARD_HTML`, served via `/dashboard`.

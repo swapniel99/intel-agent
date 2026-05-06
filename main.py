@@ -329,6 +329,7 @@ def render_dashboard(
 ) -> dict:
     """
     Render a dashboard. Always call this when finished — it is the only output surface.
+    PRO-ACTIVE VISUALIZATION: If you have numerical data, metrics, or comparisons, ALWAYS include a 'chart'.
 
     title: dashboard heading (required).
     summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
