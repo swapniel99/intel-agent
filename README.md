@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="extension/icons/logo_high_res.png" width="200" alt="IntelAgent Logo">
+  <img src="extension/icons/logo_high_res.png" width="400" alt="IntelAgent Logo">
 </p>
 
 # 🔍 IntelAgent
