@@ -14,8 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Standalone Window UI** (`extension/index.html` / `index.js`) — orchestrator + primary UI in dedicated window (not side panel)
 - **Options Page** (`extension/options.html` / `options.js`) for one-time Gemini API key setup
 - `index.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
-- **Layout:** Resizable side-by-side panels — left (70%): dashboard iframe, right (30%): chat history + prompt input (auto-resizing with height limits)
-- Dashboard rendering: final tool result (`render_dashboard`) → backend populates `_LAST_DASHBOARD_HTML` → right panel sets `iframe.src` to `http://localhost:8000/dashboard?theme=...`
+- **Layout:** Resizable side-by-side panels — left (dynamic %): dashboard iframe, right (dynamic %): chat history + prompt input. Default is roughly 70/30 split.
+- Dashboard rendering: final tool result (`render_dashboard`) → backend populates `_LAST_DASHBOARD_HTML` → left panel sets `iframe.src` to `http://localhost:8000/dashboard?theme=...`
 - `background.js` opens extension window on icon click
 - `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
 - Gemini API key + MCP server URL stored in `chrome.storage.local`. Configurable via inline settings panel (gear icon in main UI) or `options.html` (manifest `options_page`)
@@ -52,8 +52,8 @@ uv sync                   # installs fastmcp, httpx, prefab-ui, uvicorn from uv.
 # Backend — run server
 ./.venv/bin/python main.py            # http://localhost:8000 (streamable-http transport)
 
-# Backend — verify server connectivity
-./.venv/bin/python test_mcp_server.py  # async Streamable-HTTP client test → lists tools from running server
+# Backend — verify server connectivity and logic
+pytest test_mcp_server.py  # comprehensive integration test suite for tools and routes
 
 # Backend — run tests (when implemented)
 pytest
@@ -71,7 +71,7 @@ GitHub Actions workflow in `.github/workflows/pytest.yml` runs unit tests on eve
 
 ## Demo Sequences
 
-**Basic flow:** User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("check_duplicates")` → `manage_local_library("save_new")` → `render_dashboard` → dashboard injected into Side Panel iframe.
+**Basic flow:** User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("check_duplicates")` → `manage_local_library("save_new")` → `render_dashboard` → dashboard injected into main iframe.
 
 ## Key Constraints
 
@@ -84,7 +84,7 @@ GitHub Actions workflow in `.github/workflows/pytest.yml` runs unit tests on eve
 - MCP request timeout: retry logic implemented; requests timeout after 20s, retry up to 2 attempts with exponential backoff
 - Conversation history: in-memory tracking (not truncated); checkpoint stack enables undo/clear without reloading
 - Theme: global dark/light mode toggle in extension UI, state in `chrome.storage.local`. Passed to dashboard via `?theme=dark|light`.
-- Theme matching: Gemini must select best-match theme from exact list (medical, security, rust, python, ai, web, cloud, data, game, crypto, hardware, linux, science, devtools, infra, default)
+- Dashboard content: handled entirely by `render_dashboard` tool which returns `{"status": "dashboard_ready"}`.
 - Python environment: **Mandatory** use of `./.venv/bin/python`. Always check for `.venv/` before running any command.
 - Python version pinned to 3.14 (`.python-version`)
 - Prefab dashboard rendering happens server-side, results cached in `_LAST_DASHBOARD_HTML`, served via `/dashboard`.
@@ -125,7 +125,7 @@ intel-agent/
 **Tool Return Schemas:**
 - `fetch_tech_news`: `[{title, url, points}, ...]` or `[{status}, ...]` on fallback
 - `manage_local_library`: `{status, articles?}` dict
-- `render_dashboard`: `{status, topic}` dict (backend caches HTML)
+- `render_dashboard`: `{"status": "dashboard_ready"}` dict (backend caches HTML)
 
 **Frontend (extension/index.js):**
 - Init: `mcpInitialize()` → `loadMcpTools()` → convert to Gemini `functionDeclarations` schema
@@ -138,7 +138,7 @@ intel-agent/
 - MCP session continuity: `mcp-session-id` header persisted; auto-recovery on session loss with retry logic + timeout
 - Gemini config: MCP `functionDeclarations` + native `googleSearch` tool registered together
 - Theme: dark/light toggle wired via `chrome.storage.local`, applied to extension UI and passed to dashboard iframe
-- UI Layout: dashboard panel (left, 70%) displays iframe; chat panel (right, 30%) shows conversation history + prompt input
+- UI Layout: dashboard panel (left) displays iframe; chat panel (right) shows conversation history + prompt input
 - Error state: if server unavailable, display "Server Disconnected" message (not silent failure)
 
 ## UI/UX Patterns & Layout
@@ -154,14 +154,13 @@ intel-agent/
 - Checkpoints stored in-memory; lost on window close
 
 **Conversation History Display:**
-- Chat panel (left sidebar) logs all agent turns + user prompts
-- History truncated to 10 turns (newest kept) to limit context window
-- Cleared when user starts new agent run (prompt resubmit)
-- Use `appendGemini()` / `clearGemini()` / `getHistory()` for manipulation
+- Chat panel (right) logs all agent turns + user prompts.
+- History is maintained for the duration of the window session; checkpoint stack enables undo.
+- Use `appendChatMessage()` for UI updates.
 
 **Resizable Panels:**
-- `<div class="resizer">` between chat + dashboard divs enables dragging
-- Mouse drag updates `width` of left panel; right panel fills remainder
+- `<div class="resizer">` between dashboard + chat divs enables horizontal resizing
+- Mouse drag updates `flex` basis of panels; stored in session state.
 - Stored in session state (not persisted across closes)
 
 **Dashboard Iframe Rendering:**
