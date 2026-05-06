@@ -80,6 +80,8 @@ async def test_fetch_dev():
 @pytest.mark.asyncio
 async def test_fetch_reddit():
     data = _parse(await _call("fetch_tech_news", {"query": "python", "limit": 3, "source": "reddit"}))
+    if any("status" in d and "unavailable" in d["status"] for d in data):
+        pytest.skip("Reddit unavailable (internet/throttling)")
     articles = [d for d in data if "title" in d]
     assert len(articles) > 0
     for a in articles:
@@ -90,6 +92,8 @@ async def test_fetch_reddit():
 @pytest.mark.asyncio
 async def test_fetch_all_sources():
     data = _parse(await _call("fetch_tech_news", {"query": "AI", "limit": 6, "source": "all"}))
+    if any("status" in d and "unavailable" in d["status"] for d in data):
+        pytest.skip("One or more sources unavailable")
     articles = [d for d in data if "title" in d]
     sources = {a.get("source") for a in articles}
     assert len(articles) > 0
