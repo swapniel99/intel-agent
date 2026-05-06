@@ -223,21 +223,44 @@ _DEFAULT_EMOJI = "🔎"
 
 
 def _normalize_chart(chart: dict) -> dict:
-    """Lowercase type, convert labels/values simple format, normalize data_key → dataKey in series."""
+    """Lowercase type, convert labels/values simple format, normalize keys, enable legends/tooltips by default."""
     c = dict(chart)
     if "type" in c:
         c["type"] = c["type"].lower()
+
+    # Handle common aliases
+    for old, new in [("show_legend", "showLegend"), ("show_tooltip", "showTooltip"), ("show_grid", "showGrid")]:
+        if old in c and new not in c:
+            c[new] = c.pop(old)
+
+    # Enable legend/tooltip by default if not specified
+    if "showLegend" not in c:
+        c["showLegend"] = True
+    if "showTooltip" not in c:
+        c["showTooltip"] = True
+    if "showGrid" not in c:
+        c["showGrid"] = True
+
     if not c.get("data") and c.get("labels") and c.get("values"):
         labels = c.pop("labels")
         values = c.pop("values")
         c["data"] = [{"label": lbl, "value": val} for lbl, val in zip(labels, values)]
         if not c.get("series"):
             c["series"] = [{"dataKey": "value", "label": c.get("title") or "Value"}]
+
     if c.get("series"):
         c["series"] = [
             {("dataKey" if k == "data_key" else k): v for k, v in s.items()}
             for s in c["series"]
         ]
+
+    # Chart-specific aliases
+    if c.get("type") == "radar":
+        if "axis_key" in c and "axisKey" not in c:
+            c["axisKey"] = c.pop("axis_key")
+        if "axisKey" in c and "xAxis" not in c:
+            c["xAxis"] = c["axisKey"]
+
     return c
 
 
@@ -253,24 +276,28 @@ def _build_chart_node(chart: dict) -> dict | None:
     data = chart.get("data", [])
     series = chart.get("series", [])
     x_axis = chart.get("xAxis") or chart.get("x_axis") or "label"
+
     if data and not series and ctype not in ("pie", "radial"):
         series = [{"dataKey": k, "label": k.capitalize()} for k in data[0] if k != x_axis]
+
     node: dict = {"type": type_map[ctype], "data": data, "height": chart.get("height", 300)}
+
+    # Apply common visual properties
+    for prop in ("showLegend", "showTooltip", "showGrid", "animate", "title"):
+        if prop in chart:
+            node[prop] = chart[prop]
+
     if ctype in ("pie", "radial"):
         node["dataKey"] = chart.get("dataKey") or (series[0]["dataKey"] if series else "value")
         node["nameKey"] = chart.get("nameKey") or x_axis
     elif ctype == "radar":
         node["series"] = series
         node["axisKey"] = x_axis
-    else:
+    else:  # bar, line, area
         node["series"] = series
         node["xAxis"] = x_axis
         if chart.get("stacked"):
             node["stacked"] = True
-        if chart.get("showLegend"):
-            node["showLegend"] = True
-    if chart.get("title"):
-        node["title"] = chart["title"]
     return node
 
 
