@@ -26,6 +26,7 @@ let mcpTools = [];
 let geminiApiKey = "";
 let mcpSessionId = null;
 let ai = null;
+let conversationHistory = [];
 
 // ── MCP helpers ──────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ async function mcpRequest(method, params = {}) {
   if (res.status === 404 && mcpSessionId) {
     console.warn("MCP session not found (server likely restarted). Re-initializing...");
     mcpSessionId = null;
+    conversationHistory = [];
     await mcpInitialize(); // Re-initialize connection
 
     // Retry the original request with new session
@@ -125,15 +127,18 @@ function mcpToolsToFunctionDeclarations(tools) {
 
 async function runAgent(userPrompt) {
   setStatus("Running agent…");
-  $dashboardFrame.style.display = "none";
-  $dashboardFrame.src = "about:blank";
-  $emptyState.style.display = "none";
+  if (conversationHistory.length === 0) {
+    $dashboardFrame.style.display = "none";
+    $dashboardFrame.src = "about:blank";
+    $emptyState.style.display = "none";
+  }
 
   const functionDeclarations = mcpToolsToFunctionDeclarations(mcpTools);
 
-  const contents = [
-    { role: "user", parts: [{ text: userPrompt }] },
-  ];
+  const userTurn = { role: "user", parts: [{ text: userPrompt }] };
+  conversationHistory.push(userTurn);
+  if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
+  const contents = conversationHistory;
 
   const now = new Date().toLocaleString();
   const systemInstruction = `You are IntelAgent, an AI research assistant.
@@ -315,6 +320,7 @@ function loadSettings() {
 
 async function resetConnection() {
   mcpSessionId = null;
+  conversationHistory = [];
   setStatus("Resetting connection…");
   $dashboardFrame.style.display = "none";
   $emptyState.style.display = "flex";
@@ -384,6 +390,7 @@ $runBtn.addEventListener("click", async () => {
   try {
     await runAgent(prompt);
   } catch (err) {
+    conversationHistory.pop();
     setStatus(`Error: ${err.message}`, "error");
   } finally {
     $runBtn.disabled = false;
