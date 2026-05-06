@@ -8,6 +8,8 @@
 
 IntelAgent bridges the gap between high-level AI reasoning and local system capabilities. It empowers users to fetch trending news from multiple sources, ground facts with Google Search, manage findings against a local JSON ledger, and visualize data through a beautiful, interactive Prefab dashboard.
 
+[![Watch the video](https://img.shields.io/badge/YouTube-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/6RK0Bzaukyo)
+
 ---
 
 ## ✨ Key Features
