@@ -338,7 +338,6 @@ def render_prefab_dashboard(
                                 src = c.get("source")
                                 if src:
                                     Badge(label=str(src).upper(), variant="outline")
-                                
                                 # Format points for readability
                                 p = c.get("points", 0) or 0
                                 if isinstance(p, (int, float)):
@@ -352,7 +351,6 @@ def render_prefab_dashboard(
                                         p_str = str(p)
                                 else:
                                     p_str = str(p)
-                                
                                 Badge(label=f"▲ {p_str}", variant="info")
                     with CardContent():
                         if c.get("ai_summary"):
