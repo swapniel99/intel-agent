@@ -12,6 +12,7 @@ const $runBtn = document.getElementById("run-btn");
 const $promptInput = document.getElementById("prompt-input");
 const $dashboardFrame = document.getElementById("prefab-frame");
 const $emptyState = document.getElementById("empty-state");
+const $chatHistory = document.getElementById("chat-history");
 let DASHBOARD_URL = "http://localhost:8000/dashboard";
 const $settingsBtn = document.getElementById("settings-btn");
 const $themeBtn = document.getElementById("theme-btn");
@@ -21,12 +22,21 @@ const $mcpUrlInput = document.getElementById("mcp-url-input");
 const $saveSettingsBtn = document.getElementById("save-settings-btn");
 const $keyStatus = document.getElementById("key-status");
 const $resetBtn = document.getElementById("reset-btn");
+const $resizer = document.getElementById("resizer");
+const $dashboardPanel = document.getElementById("dashboard-panel");
+const $chatPanel = document.getElementById("chat-panel");
+const $mainView = document.getElementById("main-view");
+const $undoBtn = document.getElementById("undo-btn");
+const $clearBtn = document.getElementById("clear-btn");
 
 let mcpTools = [];
 let geminiApiKey = "";
 let mcpSessionId = null;
 let ai = null;
 let conversationHistory = [];
+let userPromptHistory = [];
+let conversationCheckpoints = [];
+let isResizing = false;
 
 // ── MCP helpers ──────────────────────────────────────────────────────────────
 
@@ -142,6 +152,13 @@ function mcpToolsToFunctionDeclarations(tools) {
 // ── Agent loop ────────────────────────────────────────────────────────────────
 
 async function runAgent(userPrompt) {
+  const checkpointLength = conversationHistory.length;
+  userPromptHistory.push(userPrompt);
+  conversationCheckpoints.push(checkpointLength);
+  appendChatMessage(userPrompt, "user");
+  updateChatButtonStates();
+  $promptInput.value = "";
+
   setStatus("Running agent…");
   if (conversationHistory.length === 0) {
     $dashboardFrame.style.display = "none";
@@ -281,6 +298,19 @@ Rules (CRITICAL):
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
+function appendChatMessage(text, type = "user") {
+  const msg = document.createElement("div");
+  msg.className = `chat-message ${type}`;
+  msg.textContent = text;
+  $chatHistory.insertBefore(msg, $chatHistory.firstChild);
+  $chatHistory.scrollTop = $chatHistory.scrollHeight;
+}
+
+function updateChatButtonStates() {
+  $undoBtn.disabled = userPromptHistory.length === 0;
+  $clearBtn.disabled = userPromptHistory.length === 0;
+}
+
 function setStatus(msg, type = "") {
   $status.textContent = msg;
   $status.className = type;
@@ -343,10 +373,14 @@ function loadSettings() {
 async function resetConnection() {
   mcpSessionId = null;
   conversationHistory = [];
+  userPromptHistory = [];
+  conversationCheckpoints = [];
+  $chatHistory.innerHTML = "";
   setStatus("Resetting connection…");
   $dashboardFrame.style.display = "none";
   $emptyState.style.display = "flex";
   $runBtn.disabled = true;
+  updateChatButtonStates();
   await checkServer();
 }
 
@@ -437,5 +471,63 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
+// ── Chat actions ──────────────────────────────────────────────────────────
+
+$undoBtn.addEventListener("click", () => {
+  if (userPromptHistory.length === 0) return;
+
+  const lastPrompt = userPromptHistory.pop();
+  const checkpoint = conversationCheckpoints.pop();
+  $promptInput.value = lastPrompt;
+
+  if ($chatHistory.firstChild) {
+    $chatHistory.removeChild($chatHistory.firstChild);
+  }
+
+  conversationHistory.length = checkpoint;
+
+  updateChatButtonStates();
+});
+
+$clearBtn.addEventListener("click", () => {
+  if (confirm("Clear all chat history?")) {
+    userPromptHistory = [];
+    conversationHistory = [];
+    conversationCheckpoints = [];
+    $chatHistory.innerHTML = "";
+    $promptInput.value = "";
+    updateChatButtonStates();
+  }
+});
+
+// ── Resizable panels ──────────────────────────────────────────────────────────
+
+$resizer.addEventListener("mousedown", () => {
+  isResizing = true;
+  $resizer.classList.add("active");
+});
+
+document.addEventListener("mousemove", (e) => {
+  if (!isResizing) return;
+
+  const mainRect = $mainView.getBoundingClientRect();
+  const newDashWidth = e.clientX - mainRect.left;
+  const minDash = mainRect.width * 0.3;
+  const maxDash = mainRect.width * 0.8;
+  const clamped = Math.max(minDash, Math.min(maxDash, newDashWidth));
+
+  const dashPercent = (clamped / mainRect.width) * 100;
+  const chatPercent = 100 - dashPercent - 0.5;
+
+  $dashboardPanel.style.flex = `0 0 ${dashPercent}%`;
+  $chatPanel.style.flex = `0 0 ${chatPercent}%`;
+});
+
+document.addEventListener("mouseup", () => {
+  isResizing = false;
+  $resizer.classList.remove("active");
+});
+
+updateChatButtonStates();
 loadTheme();
 loadSettings();

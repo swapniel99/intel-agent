@@ -188,87 +188,47 @@
     /* ── Main content ── */
     #main-view {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       flex: 1;
       min-height: 0;
       width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 24px;
-      gap: 24px;
+      gap: 0;
     }
 
-    #prompt-section {
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
+    /* ── Left panel: Dashboard (70%) ── */
+    #dashboard-panel {
+      flex: 0 0 70%;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      min-height: 0;
+      overflow: hidden;
+      transition: flex 0.1s;
     }
 
-    #prompt-container {
-        display: flex;
-        gap: 12px;
+    #resizer {
+      width: 6px;
+      background: var(--border);
+      cursor: col-resize;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      user-select: none;
     }
 
-    #prompt-input {
-      flex: 1;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 15px;
-      padding: 14px 16px;
-      outline: none;
-      resize: none;
-      min-height: 80px;
-      transition: border-color 0.2s;
-      line-height: 1.5;
+    #resizer:hover {
+      background: var(--accent);
     }
 
-    #prompt-input:focus { border-color: var(--accent); }
-    #prompt-input::placeholder { color: var(--text-faint); }
-
-    #run-btn {
-      background: var(--accent-btn);
-      border: none;
-      border-radius: 8px;
-      color: #fff;
-      cursor: pointer;
-      font-size: 15px;
-      font-weight: 600;
-      padding: 0 24px;
-      height: 80px;
-      transition: background 0.2s, transform 0.1s;
+    #resizer.active {
+      background: var(--accent);
     }
-
-    #run-btn:hover { background: var(--accent-btn-hover); }
-    #run-btn:active { transform: translateY(1px); }
-    #run-btn:disabled { background: var(--btn-disabled); color: var(--text-faint); cursor: not-allowed; }
-
-    #status-bar {
-      font-size: 13px;
-      color: var(--text-muted);
-      padding: 0 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #status-bar.error { color: var(--err); }
-    #status-bar.success { color: var(--ok); }
 
     #prefab-container {
       flex: 1;
       position: relative;
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      background: var(--bg);
       overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
     }
 
     #empty-state {
@@ -293,6 +253,166 @@
       border: 0;
       display: none;
     }
+
+    /* ── Right panel: Chat (30%) ── */
+    #chat-panel {
+      flex: 0 0 30%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: var(--bg-elev);
+      transition: flex 0.1s;
+    }
+
+    #chat-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-elev);
+    }
+
+    #chat-history {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+      padding: 12px;
+      min-height: 0;
+    }
+
+    .chat-message {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+
+    .chat-message.user {
+      background: var(--bg);
+      color: var(--text);
+      border: none;
+      border-left: 3px solid var(--accent);
+      margin-left: 12px;
+    }
+
+    .chat-message.status {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-style: italic;
+      padding: 4px 8px;
+      margin: 0 8px;
+    }
+
+    .chat-message.status.error {
+      color: var(--err);
+    }
+
+    .chat-message.status.success {
+      color: var(--ok);
+    }
+
+    #prompt-section {
+      background: var(--bg-elev);
+      border-top: 1px solid var(--border);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    #prompt-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    #undo-btn, #clear-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 6px 10px;
+      transition: all 0.2s;
+    }
+
+    #undo-btn:hover:not(:disabled), #clear-btn:hover:not(:disabled) {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    #undo-btn:disabled, #clear-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #prompt-container {
+      display: flex;
+      gap: 8px;
+    }
+
+    #prompt-input {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      resize: none;
+      max-height: 60px;
+      transition: border-color 0.2s;
+      line-height: 1.4;
+    }
+
+    #prompt-input:focus { border-color: var(--accent); }
+    #prompt-input::placeholder { color: var(--text-faint); }
+
+    #run-btn {
+      background: var(--accent-btn);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      transition: background 0.2s, transform 0.1s;
+      align-self: flex-end;
+      white-space: nowrap;
+    }
+
+    #run-btn:hover { background: var(--accent-btn-hover); }
+    #run-btn:active { transform: translateY(1px); }
+    #run-btn:disabled { background: var(--btn-disabled); color: var(--text-faint); cursor: not-allowed; }
+
+    #status-bar {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 0 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 18px;
+    }
+
+    #status-bar.error { color: var(--err); }
+    #status-bar.success { color: var(--ok); }
 
     /* Scrollbar styling */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -331,25 +451,40 @@
   </div>
 
   <div id="main-view">
-    <div id="prompt-section">
-      <div id="prompt-container">
-        <textarea
-          id="prompt-input"
-          placeholder='e.g. "Fetch top 4 articles on Local LLMs. Filter duplicates, save new ones, generate a dashboard."'
-        ></textarea>
-        <button id="run-btn" disabled>Run</button>
+    <!-- Left: Dashboard -->
+    <div id="dashboard-panel">
+      <div id="prefab-container">
+        <div id="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M4 6h16M4 12h16M4 18h7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>Your curated research dashboard will appear here.<br>Enter a prompt on the right to begin.</p>
+        </div>
+        <iframe id="prefab-frame" src="about:blank"></iframe>
       </div>
-      <div id="status-bar">Checking server…</div>
     </div>
 
-    <div id="prefab-container">
-      <div id="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M4 6h16M4 12h16M4 18h7" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <p>Your curated research dashboard will appear here.<br>Enter a prompt above to begin.</p>
+    <!-- Resizer -->
+    <div id="resizer"></div>
+
+    <!-- Right: Chat -->
+    <div id="chat-panel">
+      <div id="chat-header">Chat History</div>
+      <div id="chat-history"></div>
+      <div id="prompt-section">
+        <div id="prompt-container">
+          <textarea
+            id="prompt-input"
+            placeholder='e.g. "Fetch top 4 articles on Local LLMs."'
+          ></textarea>
+          <button id="run-btn" disabled>Send</button>
+        </div>
+        <div id="prompt-actions">
+          <button id="undo-btn" title="Undo last message">↶ Undo</button>
+          <button id="clear-btn" title="Clear chat history">🗑 Clear</button>
+        </div>
+        <div id="status-bar">Checking server…</div>
       </div>
-      <iframe id="prefab-frame" src="about:blank"></iframe>
     </div>
   </div>
 
