@@ -1,6 +1,6 @@
 # 🔍 IntelAgent
 
-> **AI-Powered Research Assistant** — A production-ready orchestration of a Chrome Extension Side Panel and a local Python MCP backend.
+> **AI-Powered Research Assistant** — A production-ready orchestration of a Chrome Extension and a local Python MCP backend.
 
 IntelAgent bridges the gap between high-level AI reasoning and local system capabilities. It empowers users to fetch trending news from multiple sources, ground facts with Google Search, manage findings against a local JSON ledger, and visualize data through a beautiful, interactive Prefab dashboard.
 
@@ -12,7 +12,7 @@ IntelAgent bridges the gap between high-level AI reasoning and local system capa
 - **📚 Local Memory:** Persistent JSON library (`saved_articles.json`) for article deduplication, full-text search, and historical research tracking.
 - **📊 Dynamic Dashboards:** Automatically generates rich UI dashboards using **Prefab UI** (Bar, Pie, Line, Area, Radar, Radial).
 - **🧩 MCP Native:** Built on the **Model Context Protocol (FastMCP)** for robust, standardized communication between the LLM and local tools.
-- **⚡ Persistence:** Operates in a Chrome **Side Panel** (Manifest V3) for an uninterrupted, always-available research companion.
+- **⚡ Persistent UI:** Runs in a dedicated Chrome Extension window (Manifest V3) with a resizable dashboard + chat layout.
 
 ---
 
@@ -20,7 +20,7 @@ IntelAgent bridges the gap between high-level AI reasoning and local system capa
 
 ```mermaid
 graph TD
-    User([User Prompt]) --> Extension[Chrome Extension Side Panel]
+    User([User Prompt]) --> Extension[Chrome Extension Window]
     Extension --> Gemini
     Gemini -- Tool Discovery --> FastMCP[FastMCP Server :8000]
     FastMCP -- Tool Definition --> Gemini
@@ -65,8 +65,8 @@ uv sync
 1. Open Chrome and navigate to `chrome://extensions/`.
 2. Enable **Developer mode** (top right).
 3. Click **Load unpacked** and select the `extension` folder in this repository.
-4. Click the IntelAgent icon in your toolbar to open the **Side Panel**.
-5. Click the gear icon (⚙️) to enter your **Gemini API Key**.
+4. Click the IntelAgent icon in your toolbar to open the extension window.
+5. Click the gear icon (⚙️) to enter your **Gemini API Key** and MCP server URL.
 
 ---
 
@@ -97,7 +97,7 @@ uv sync
 3. **Summarize:** Gemini generates concise, 1-sentence summaries for the new findings.
 4. **Persist:** Gemini calls `manage_local_library(save_new)` to update your local ledger.
 5. **Visualize:** Gemini calls `render_prefab_dashboard` with curated cards and a relevant chart.
-6. **Result:** The Side Panel updates instantly with a professional research report.
+6. **Result:** The dashboard panel updates instantly with a professional research report.
 
 ---
 
