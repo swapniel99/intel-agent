@@ -137,7 +137,7 @@ async function runAgent(userPrompt) {
 
   const userTurn = { role: "user", parts: [{ text: userPrompt }] };
   conversationHistory.push(userTurn);
-  if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
+  if (conversationHistory.length > 5) conversationHistory = conversationHistory.slice(-5);
   const contents = conversationHistory;
 
   const now = new Date().toLocaleString();
