@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="extension/icons/logo_high_res.png" width="200" alt="IntelAgent Logo">
+</p>
+
 # 🔍 IntelAgent
 
 > **AI-Powered Research Assistant** — A production-ready orchestration of a Chrome Extension and a local Python MCP backend.
