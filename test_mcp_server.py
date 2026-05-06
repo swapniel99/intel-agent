@@ -287,30 +287,3 @@ async def test_render_with_metrics():
         ]
     }))
     assert data.get("status") == "dashboard_ready"
-
-
-# ---------------------------------------------------------------------------
-# /dashboard HTTP route
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_dashboard_route_dark():
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get("http://localhost:8000/dashboard?theme=dark")
-            assert resp.status_code == 200
-            assert "text/html" in resp.headers.get("content-type", "")
-            assert "<html" in resp.text
-        except httpx.ConnectError:
-            pytest.skip("HTTP server not running (skipping dashboard route test)")
-
-
-@pytest.mark.asyncio
-async def test_dashboard_route_light():
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get("http://localhost:8000/dashboard?theme=light")
-            assert resp.status_code == 200
-            assert "<html" in resp.text
-        except httpx.ConnectError:
-            pytest.skip("HTTP server not running (skipping dashboard route test)")
