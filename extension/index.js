@@ -264,6 +264,14 @@ Rules (CRITICAL):
       const { name, args } = call;
       console.log(`  - ${name}(${JSON.stringify(args).slice(0, 60)}…)`);
 
+      if (forceFinish && name !== "render_dashboard") {
+        console.warn(`  → forceFinish active, skipping disallowed tool: ${name}`);
+        toolResponseParts.push({
+          functionResponse: { name, response: { content: { error: "Only render_dashboard allowed at this stage" } } }
+        });
+        continue;
+      }
+
       let toolResult;
       try {
         toolResult = await callMcpTool(name, args);
@@ -271,9 +279,14 @@ Rules (CRITICAL):
         toolResult = { error: err.message };
       }
 
-      if (name === "render_dashboard" && toolResult?.status === "dashboard_ready") {
-        console.log(`  → dashboard rendered`);
-        renderDashboard();
+      if (name === "render_dashboard") {
+        if (toolResult?.status === "dashboard_ready") {
+          console.log(`  → dashboard rendered`);
+          renderDashboard();
+        } else {
+          console.warn(`  → dashboard render failed:`, toolResult);
+          setStatus(`Dashboard error: ${toolResult?.status || JSON.stringify(toolResult)}`, "error");
+        }
         dashboardRendered = true;
       }
 
@@ -326,12 +339,15 @@ function renderDashboard() {
 
 function setServerStatus(online) {
   $dot.className = online ? "dot" : "dot offline";
+  const noTools = online && mcpTools.length === 0;
   setStatus(
-    online
-      ? "Server connected. Enter a prompt."
-      : "Server offline — run: python main.py"
+    !online
+      ? "Server offline — run: python main.py"
+      : noTools
+        ? "Server connected but no tools loaded — check backend."
+        : "Server connected. Enter a prompt."
   );
-  $runBtn.disabled = !online || !geminiApiKey;
+  $runBtn.disabled = !online || !geminiApiKey || noTools;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -447,7 +463,12 @@ $runBtn.addEventListener("click", async () => {
   try {
     await runAgent(prompt);
   } catch (err) {
-    conversationHistory.pop();
+    // Restore fully to pre-prompt state using the checkpoint runAgent just pushed
+    const checkpoint = conversationCheckpoints.pop();
+    userPromptHistory.pop();
+    if (checkpoint !== undefined) conversationHistory.length = checkpoint;
+    if ($chatHistory.firstChild) $chatHistory.removeChild($chatHistory.firstChild);
+    updateChatButtonStates();
     setStatus(`Error: ${err.message}`, "error");
   } finally {
     console.log(`[After runAgent] conversationHistory length:`, conversationHistory.length);

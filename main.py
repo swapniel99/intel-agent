@@ -4,18 +4,9 @@ import re
 import logging
 from datetime import datetime, timedelta, timezone
 
-import urllib3
-
-# pytrends uses urllib3 Retry with 'method_whitelist' (removed in urllib3>=2.0, replaced by 'allowed_methods')
-_orig_retry = urllib3.Retry.__init__
-def _patched_retry(self, *args, **kwargs):
-    kwargs.pop("method_whitelist", None)
-    _orig_retry(self, *args, **kwargs)
-urllib3.Retry.__init__ = _patched_retry
-
 import httpx
 from ddgs import DDGS
-from pytrends.request import TrendReq
+from pytrends_modern import TrendReq
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
@@ -292,20 +283,16 @@ def fetch_content_trends(
     """
     logger.info(f"Tool Call: fetch_content_trends(topic='{topic}', region_tier='{region_tier}', timeframe='{timeframe}')")
 
-    try:
-        pt = TrendReq(hl="en-IN", tz=330, retries=2, backoff_factor=0.5, timeout=(10, 25))
+    def _run_trends(pt: TrendReq) -> list[dict]:
         pt.build_payload([topic], geo="IN", timeframe=timeframe)
-
         df = pt.interest_by_region(resolution="CITY", inc_low_vol=True)
         if df is None or df.empty:
             return [{"status": f"No Google Trends data for '{topic}' in India."}]
 
         related_q = pt.related_queries().get(topic, {})
         related_t = pt.related_topics().get(topic, {})
-
         top_q_df = related_q.get("top")
         top_queries = top_q_df.head(5)["query"].tolist() if top_q_df is not None and not top_q_df.empty else []
-
         top_t_df = related_t.get("top")
         top_topics = top_t_df.head(5)["topic_title"].tolist() if top_t_df is not None and not top_t_df.empty else []
 
@@ -317,17 +304,14 @@ def fetch_content_trends(
             tier = _city_tier(str(city))
             if region_tier != "all" and tier != region_tier:
                 continue
-            results.append({
-                "city": str(city),
-                "tier": tier,
-                "interest_score": score,
-                "related_queries": top_queries,
-                "related_topics": top_topics,
-            })
-
+            results.append({"city": str(city), "tier": tier, "interest_score": score,
+                             "related_queries": top_queries, "related_topics": top_topics})
         results.sort(key=lambda x: x["interest_score"], reverse=True)
         return results if results else [{"status": f"No cities matched tier '{region_tier}'."}]
 
+    try:
+        pt = TrendReq(hl="en-IN", tz=330, retries=2, backoff_factor=0.5, timeout=(10, 25))
+        return _run_trends(pt)
     except Exception as e:
         err = str(e)
         if "429" in err or "Too Many Requests" in err:
