@@ -187,13 +187,13 @@ def _city_tier(city: str) -> str:
 @mcp.tool()
 async def fetch_brand_sentiment(
     brands: list[str],
-    platforms: str = "all",
+    platforms: list[str] | str = "all",
     timeframe: str = "w",
 ) -> list[dict]:
     """Fetch social media sentiment for pharma brands from Reddit, Twitter/X, and LinkedIn.
 
     brands: list of brand names e.g. ["PharmEasy", "1mg", "Apollo", "HMS"]
-    platforms: "reddit" | "twitter" | "linkedin" | "all"
+    platforms: list of platforms e.g. ["reddit", "twitter"] or a single string "reddit" | "twitter" | "linkedin" | "all"
     timeframe: "d" (day) | "w" (week, default) | "m" (month)
 
     Returns: [{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]
@@ -201,13 +201,18 @@ async def fetch_brand_sentiment(
     Sentiment score in [-1.0, 1.0]: positive=closer to 1, negative=closer to -1.
     Sentiment scored by RoBERTa model (twitter-roberta-base-sentiment-latest).
     """
-    logger.info(f"Tool Call: fetch_brand_sentiment(brands={brands}, platforms='{platforms}', timeframe='{timeframe}')")
+    logger.info(f"Tool Call: fetch_brand_sentiment(brands={brands}, platforms={platforms!r}, timeframe='{timeframe}')")
+
+    if isinstance(platforms, str):
+        platforms = [platforms]
+    _p = set(platforms)
+    use_all = "all" in _p
 
     results = []
     for brand in brands:
-        do_reddit = platforms in ("reddit", "all")
-        do_twitter = platforms in ("twitter", "all")
-        do_linkedin = platforms in ("linkedin", "all")
+        do_reddit = use_all or "reddit" in _p
+        do_twitter = use_all or "twitter" in _p
+        do_linkedin = use_all or "linkedin" in _p
 
         if do_reddit:
             try:
