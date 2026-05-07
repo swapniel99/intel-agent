@@ -470,6 +470,32 @@ def _normalize_chart(chart: dict) -> dict:
         if not c.get("series"):
             c["series"] = [{"dataKey": "value", "label": c.get("title") or "Value"}]
 
+    # Fix agent mangling dataKey and nameKey into one string: 'pct,nameKey:cat' or 'pct,nameKey:'
+    if c.get("dataKey") and "nameKey" not in c:
+        raw = str(c["dataKey"])
+        if "nameKey" in raw:
+            parts = raw.split(",nameKey:")
+            c["dataKey"] = parts[0].strip()
+            if len(parts) > 1 and parts[1].strip():
+                c["nameKey"] = parts[1].strip()
+
+    # Infer missing type from chart shape
+    if not c.get("type"):
+        if c.get("dataKey") or (c.get("data") and len(c["data"][0]) <= 3):
+            c["type"] = "pie"
+        elif c.get("series"):
+            c["type"] = "bar"
+        else:
+            c["type"] = "bar"
+
+    # Auto-detect nameKey for pie/radial from first data row keys
+    if c.get("type") in ("pie", "radial") and not c.get("nameKey") and c.get("data"):
+        dk = c.get("dataKey", "value")
+        for k in c["data"][0].keys():
+            if k != dk:
+                c["nameKey"] = k
+                break
+
     if c.get("series"):
         c["series"] = [
             {("dataKey" if k == "data_key" else k): v for k, v in s.items()}
@@ -558,7 +584,7 @@ def render_dashboard(
         Each: {label, value, delta?, trend?: "up|down|neutral", trendSentiment?: "positive|negative|neutral"}
         Example: {"label": "Stars", "value": "92K", "delta": "+12%", "trend": "up", "trendSentiment": "positive"}
 
-    chart: one chart. 'type' is REQUIRED — must be one of: "bar" | "line" | "area" | "pie" | "radar" | "radial"
+    chart: one chart. 'type' MUST always be set — one of: "bar" | "line" | "area" | "pie" | "radar" | "radial". Omitting type = broken chart.
         Choose type based on data shape:
           "bar"    → compare discrete categories (brand rankings, sentiment %, search rank)
           "line"   → trend over time
@@ -587,7 +613,7 @@ def render_dashboard(
     logger.info(
         f"Tool Call: render_dashboard(layout='{layout}', title='{title}', "
         f"cards={len(cards or [])}, metrics={len(metrics or [])}, "
-        f"chart={bool(chart)}, table={bool(table)})"
+        f"chart={chart}, table={bool(table)})"
     )
 
     def _article_card(c: dict) -> dict:
@@ -643,6 +669,8 @@ def render_dashboard(
         return n
 
     cn: dict | None = _build_chart_node(_normalize_chart(chart)) if chart else None
+    if chart and cn is None:
+        logger.warning(f"render_dashboard: chart failed to build — normalized={_normalize_chart(chart)}")
 
     eff = layout
     if layout == "auto":

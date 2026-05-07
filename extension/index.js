@@ -29,6 +29,8 @@ const $mainView = document.getElementById("main-view");
 const $undoBtn = document.getElementById("undo-btn");
 const $clearBtn = document.getElementById("clear-btn");
 const $presetSentiment = document.getElementById("preset-sentiment");
+const $presetRadar = document.getElementById("preset-radar");
+const $presetPie = document.getElementById("preset-pie");
 const $presetTrends = document.getElementById("preset-trends");
 const $presetRankings = document.getElementById("preset-rankings");
 const $presetAnalysis = document.getElementById("preset-analysis");
@@ -538,6 +540,12 @@ function setPreset(text) {
 
 $presetSentiment.addEventListener("click", () =>
   setPreset("Compare sentiment for PharmEasy vs Tata 1mg vs Apollo Pharmacy on Reddit and Twitter this week.")
+);
+$presetRadar.addEventListener("click", () =>
+  setPreset("Compare PharmEasy vs Tata 1mg vs Apollo across positive%, negative% and neutral% on Reddit as radar chart.")
+);
+$presetPie.addEventListener("click", () =>
+  setPreset("What is the sentiment breakdown for PharmEasy on Reddit this month?")
 );
 // $presetTrends.addEventListener("click", () =>
 //   setPreset("Show Google Trends interest for 'online pharmacy' across tier1 and tier2 Indian cities this month.")
