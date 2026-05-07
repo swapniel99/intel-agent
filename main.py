@@ -161,7 +161,7 @@ def _score_sentiment(texts: list[str]) -> tuple[dict, list[str]]:
     return aggregate, labels
 
 
-def _bucket_top_posts(items: list[dict], labels: list[str], title_key: str = "title", url_key: str = "url", score_key: str = "score", n: int = 3) -> list[dict]:
+def _bucket_top_posts(items: list[dict], labels: list[str], title_key: str = "title", url_key: str = "url", score_key: str = "score", n: int = 5) -> list[dict]:
     """Return up to n posts per sentiment label (neg first), tagged with sentiment."""
     buckets: dict[str, list[dict]] = {"negative": [], "neutral": [], "positive": []}
     for item, label in zip(items, labels):

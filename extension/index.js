@@ -543,7 +543,7 @@ $presetSentiment.addEventListener("click", () =>
 //   setPreset("Show Google Trends interest for 'online pharmacy' across tier1 and tier2 Indian cities this month.")
 // );
 $presetRankings.addEventListener("click", () =>
-  setPreset("Check search rankings for PharmEasy vs Tata 1mg vs Apollo Pharmacy vs Netmeds for 'buy medicines online india', 'medicine delivery app india', 'online pharmacy india', 'lab tests at home india', and 'order medicines online india'.")
+  setPreset("Check search rankings for PharmEasy vs Tata 1mg vs Apollo Pharmacy vs Netmeds for 'buy medicines online india', 'medicine delivery app india', 'book lab test india', 'lab tests at home india', and 'order medicines online india'.")
 );
 $presetAnalysis.addEventListener("click", () =>
   setPreset("Run a full competitive analysis for PharmEasy vs Tata 1mg vs Apollo Pharmacy: sentiment on Reddit and Twitter, and search rankings for 'buy medicines online india'.")
