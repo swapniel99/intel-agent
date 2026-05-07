@@ -4,7 +4,18 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+import urllib3
+
+# pytrends uses urllib3 Retry with 'method_whitelist' (removed in urllib3>=2.0, replaced by 'allowed_methods')
+_orig_retry = urllib3.Retry.__init__
+def _patched_retry(self, *args, **kwargs):
+    kwargs.pop("method_whitelist", None)
+    _orig_retry(self, *args, **kwargs)
+urllib3.Retry.__init__ = _patched_retry
+
 import httpx
+from ddgs import DDGS
+from pytrends.request import TrendReq
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
@@ -15,6 +26,42 @@ from prefab_ui import PrefabApp
 from prefab_ui.components import Column, Muted
 
 _CHART_TYPES = {"bar", "line", "area", "pie", "radar", "radial"}
+
+_POSITIVE_WORDS = {
+    "great", "love", "best", "fast", "easy", "excellent", "happy", "discount",
+    "amazing", "reliable", "good", "quick", "convenient", "affordable", "genuine",
+    "trusted", "recommend", "perfect", "smooth", "helpful", "awesome", "fantastic",
+    "efficient", "safe", "legit", "original", "cheap", "savings", "prompt", "accurate",
+}
+
+_NEGATIVE_WORDS = {
+    "bad", "worst", "terrible", "delay", "refund", "problem", "issue", "scam",
+    "fake", "awful", "slow", "fraud", "pathetic", "horrible", "useless", "broken",
+    "wrong", "missing", "expired", "damaged", "lost", "late", "cancelled", "blocked",
+    "failed", "error", "poor", "disgrace", "cheat", "ripped", "overpriced", "disappointing",
+    "complaint", "defective", "unreliable", "dangerous",
+}
+
+_TIER1_CITIES = {
+    "mumbai", "delhi", "bangalore", "bengaluru", "chennai", "hyderabad",
+    "pune", "kolkata", "ahmedabad",
+}
+
+_TIER2_CITIES = {
+    "jaipur", "lucknow", "surat", "kanpur", "nagpur", "patna", "indore",
+    "bhopal", "visakhapatnam", "vadodara", "coimbatore", "agra", "madurai",
+    "nashik", "faridabad", "meerut", "rajkot", "kochi", "ludhiana",
+    "aurangabad", "amritsar", "chandigarh", "noida", "gurgaon", "gurugram",
+}
+
+_BRAND_DOMAINS: dict[str, str] = {
+    "pharmeasy": "pharmeasy.in",
+    "1mg": "1mg.com",
+    "apollo": "apollopharmacy.in",
+    "hms": "hms.co.in",
+}
+
+_REDDIT_TIMEFRAME: dict[str, str] = {"d": "day", "w": "week", "m": "month"}
 
 _LAST_DASHBOARD_HTML: str = ""
 
@@ -88,6 +135,61 @@ async def _fetch_reddit(query: str, limit: int) -> list[dict]:
         {"title": p["data"].get("title", ""), "url": p["data"].get("url", ""), "points": p["data"].get("score", 0), "source": "reddit"}
         for p in posts if p["data"].get("url")
     ]
+
+
+async def _fetch_reddit_sentiment(brand: str, timeframe: str, limit: int = 25) -> list[dict]:
+    t = _REDDIT_TIMEFRAME.get(timeframe, "week")
+    url = f"https://www.reddit.com/search.json?q={brand}&sort=new&t={t}&limit={limit}"
+    headers = {"User-Agent": "IntelAgent/1.0"}
+    async with httpx.AsyncClient(timeout=15, headers=headers) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+    posts = resp.json().get("data", {}).get("children", [])
+    return [
+        {
+            "title": p["data"].get("title", ""),
+            "body": (p["data"].get("selftext", "") or "")[:400],
+            "url": f"https://reddit.com{p['data'].get('permalink', '')}",
+            "score": p["data"].get("score", 0),
+            "num_comments": p["data"].get("num_comments", 0),
+            "subreddit": p["data"].get("subreddit", ""),
+        }
+        for p in posts
+    ]
+
+
+def _score_sentiment(texts: list[str]) -> dict:
+    pos_posts = neg_posts = neutral_posts = 0
+    for text in texts:
+        words = set(text.lower().split())
+        p = len(words & _POSITIVE_WORDS)
+        n = len(words & _NEGATIVE_WORDS)
+        if p > n:
+            pos_posts += 1
+        elif n > p:
+            neg_posts += 1
+        else:
+            neutral_posts += 1
+    total = max(len(texts), 1)
+    pos_pct = round(pos_posts / total * 100)
+    neg_pct = round(neg_posts / total * 100)
+    neutral_pct = max(100 - pos_pct - neg_pct, 0)
+    score = round((pos_posts - neg_posts) / total, 3)
+    return {
+        "positive_pct": pos_pct,
+        "negative_pct": neg_pct,
+        "neutral_pct": neutral_pct,
+        "sentiment_score": score,
+    }
+
+
+def _city_tier(city: str) -> str:
+    c = city.lower().strip()
+    if c in _TIER1_CITIES:
+        return "tier1"
+    if c in _TIER2_CITIES:
+        return "tier2"
+    return "tier3"
 
 
 @mcp.tool()
@@ -218,6 +320,160 @@ def manage_local_library(
         return {"status": f"Article {article_id} not found."}
 
     return {"status": f"Unknown action '{action}'. Use 'check_duplicates', 'save_new', 'list_all', 'update', or 'delete'."}
+
+
+@mcp.tool()
+async def fetch_brand_sentiment(
+    brands: list[str],
+    platforms: str = "all",
+    timeframe: str = "w",
+) -> list[dict]:
+    """Fetch social media sentiment for pharma brands from Reddit, Twitter/X, and LinkedIn.
+
+    brands: list of brand names e.g. ["PharmEasy", "1mg", "Apollo", "HMS"]
+    platforms: "reddit" | "twitter" | "linkedin" | "all"
+    timeframe: "d" (day) | "w" (week, default) | "m" (month)
+
+    Returns: [{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]
+    Sentiment score in [-1.0, 1.0]: positive=closer to 1, negative=closer to -1.
+    """
+    logger.info(f"Tool Call: fetch_brand_sentiment(brands={brands}, platforms='{platforms}', timeframe='{timeframe}')")
+
+    results = []
+    for brand in brands:
+        do_reddit = platforms in ("reddit", "all")
+        do_twitter = platforms in ("twitter", "all")
+        do_linkedin = platforms in ("linkedin", "all")
+
+        if do_reddit:
+            try:
+                posts = await _fetch_reddit_sentiment(brand, timeframe, limit=25)
+                texts = [p["title"] + " " + p["body"] for p in posts]
+                sentiment = _score_sentiment(texts)
+                top = [{"title": p["title"], "url": p["url"], "score": p["score"]} for p in posts[:5]]
+                results.append({"brand": brand, "platform": "reddit", "total_posts": len(posts), **sentiment, "top_posts": top})
+            except Exception as e:
+                results.append({"brand": brand, "platform": "reddit", "status": f"unavailable: {e}"})
+
+        if do_twitter:
+            try:
+                raw = list(DDGS().text(f'site:x.com "{brand}"', timelimit=timeframe, max_results=20))
+                texts = [r.get("title", "") + " " + r.get("body", "") for r in raw]
+                sentiment = _score_sentiment(texts)
+                top = [{"title": r.get("title", ""), "url": r.get("href", ""), "score": 0} for r in raw[:5]]
+                results.append({"brand": brand, "platform": "twitter", "total_posts": len(raw), **sentiment, "top_posts": top})
+            except Exception as e:
+                results.append({"brand": brand, "platform": "twitter", "status": f"unavailable: {e}"})
+
+        if do_linkedin:
+            try:
+                raw = list(DDGS().text(f'site:linkedin.com "{brand}"', timelimit=timeframe, max_results=20))
+                texts = [r.get("title", "") + " " + r.get("body", "") for r in raw]
+                sentiment = _score_sentiment(texts)
+                top = [{"title": r.get("title", ""), "url": r.get("href", ""), "score": 0} for r in raw[:5]]
+                results.append({"brand": brand, "platform": "linkedin", "total_posts": len(raw), **sentiment, "top_posts": top})
+            except Exception as e:
+                results.append({"brand": brand, "platform": "linkedin", "status": f"unavailable: {e}"})
+
+    return results if results else [{"status": "No results found for the given brands and platforms."}]
+
+
+@mcp.tool()
+def fetch_content_trends(
+    topic: str,
+    region_tier: str = "all",
+    timeframe: str = "today 1-m",
+) -> list[dict]:
+    """Fetch Google Trends interest for health topics by Indian city tier.
+
+    topic: search topic e.g. "online pharmacy", "medicine delivery", "health insurance"
+    region_tier: "tier1" | "tier2" | "tier3" | "all"
+    timeframe: pytrends format — "today 1-m", "today 3-m", or "YYYY-MM-DD YYYY-MM-DD"
+
+    Returns: [{city, tier, interest_score, related_queries, related_topics}]
+    interest_score is 0–100 (relative to peak in the period).
+    """
+    logger.info(f"Tool Call: fetch_content_trends(topic='{topic}', region_tier='{region_tier}', timeframe='{timeframe}')")
+
+    try:
+        pt = TrendReq(hl="en-IN", tz=330, retries=2, backoff_factor=0.5, timeout=(10, 25))
+        pt.build_payload([topic], geo="IN", timeframe=timeframe)
+
+        df = pt.interest_by_region(resolution="CITY", inc_low_vol=True)
+        if df is None or df.empty:
+            return [{"status": f"No Google Trends data for '{topic}' in India."}]
+
+        related_q = pt.related_queries().get(topic, {})
+        related_t = pt.related_topics().get(topic, {})
+
+        top_q_df = related_q.get("top")
+        top_queries = top_q_df.head(5)["query"].tolist() if top_q_df is not None and not top_q_df.empty else []
+
+        top_t_df = related_t.get("top")
+        top_topics = top_t_df.head(5)["topic_title"].tolist() if top_t_df is not None and not top_t_df.empty else []
+
+        results = []
+        for city, row in df.iterrows():
+            score = int(row.iloc[0])
+            if score == 0:
+                continue
+            tier = _city_tier(str(city))
+            if region_tier != "all" and tier != region_tier:
+                continue
+            results.append({
+                "city": str(city),
+                "tier": tier,
+                "interest_score": score,
+                "related_queries": top_queries,
+                "related_topics": top_topics,
+            })
+
+        results.sort(key=lambda x: x["interest_score"], reverse=True)
+        return results if results else [{"status": f"No cities matched tier '{region_tier}'."}]
+
+    except Exception as e:
+        err = str(e)
+        if "429" in err or "Too Many Requests" in err:
+            return [{"status": "Google Trends rate-limited. Wait 60s and retry."}]
+        return [{"status": f"fetch_content_trends error: {err}"}]
+
+
+@mcp.tool()
+def fetch_search_presence(
+    brands: list[str],
+    keywords: list[str],
+) -> list[dict]:
+    """Check where pharma brands appear in search results for given keywords.
+
+    brands: e.g. ["PharmEasy", "1mg", "Apollo", "HMS"]
+    keywords: e.g. ["buy medicine online", "online pharmacy india", "order medicines"]
+
+    Returns: [{keyword, brand, rank, present, url}]
+    rank is 1-indexed position in top 10 results; null if not found.
+    """
+    logger.info(f"Tool Call: fetch_search_presence(brands={brands}, keywords={keywords})")
+
+    domain_map = {b.lower(): _BRAND_DOMAINS.get(b.lower(), b.lower().replace(" ", "") + ".in") for b in brands}
+    results = []
+
+    for keyword in keywords:
+        try:
+            hits = list(DDGS().text(keyword, max_results=10))
+            for brand in brands:
+                domain = domain_map.get(brand.lower(), "")
+                rank = None
+                url = None
+                for i, h in enumerate(hits, start=1):
+                    if domain in h.get("href", ""):
+                        rank = i
+                        url = h["href"]
+                        break
+                results.append({"keyword": keyword, "brand": brand, "rank": rank, "present": rank is not None, "url": url})
+        except Exception as e:
+            for brand in brands:
+                results.append({"keyword": keyword, "brand": brand, "rank": None, "present": False, "url": None, "status": f"error: {e}"})
+
+    return results if results else [{"status": "No results found."}]
 
 
 _DEFAULT_EMOJI = "🔎"
