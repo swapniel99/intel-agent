@@ -141,22 +141,37 @@ async def _fetch_twitter_api(brand: str, timeframe: str, limit: int = 50) -> lis
     ]
 
 
-def _score_sentiment(texts: list[str]) -> dict:
-    results = _sentiment_pipeline(texts, batch_size=16)
-    pos_posts = sum(1 for r in results if r["label"] == "positive")
-    neg_posts = sum(1 for r in results if r["label"] == "negative")
-    neutral_posts = sum(1 for r in results if r["label"] == "neutral")
+def _score_sentiment(texts: list[str]) -> tuple[dict, list[str]]:
+    """Returns (aggregate_dict, per_text_labels) — single model pass."""
+    raw = _sentiment_pipeline(texts, batch_size=16)
+    labels = [r["label"] for r in raw]
+    pos_posts = labels.count("positive")
+    neg_posts = labels.count("negative")
     total = max(len(texts), 1)
     pos_pct = round(pos_posts / total * 100)
     neg_pct = round(neg_posts / total * 100)
     neutral_pct = max(100 - pos_pct - neg_pct, 0)
     score = round((pos_posts - neg_posts) / total, 3)
-    return {
+    aggregate = {
         "positive_pct": pos_pct,
         "negative_pct": neg_pct,
         "neutral_pct": neutral_pct,
         "sentiment_score": score,
     }
+    return aggregate, labels
+
+
+def _bucket_top_posts(items: list[dict], labels: list[str], title_key: str = "title", url_key: str = "url", score_key: str = "score", n: int = 3) -> list[dict]:
+    """Return up to n posts per sentiment label (neg first), tagged with sentiment."""
+    buckets: dict[str, list[dict]] = {"negative": [], "neutral": [], "positive": []}
+    for item, label in zip(items, labels):
+        buckets[label].append({
+            "title": item.get(title_key, ""),
+            "url": item.get(url_key, ""),
+            "score": item.get(score_key, 0),
+            "sentiment": label,
+        })
+    return [post for label in ("negative", "neutral", "positive") for post in buckets[label][:n]]
 
 
 def _city_tier(city: str) -> str:
@@ -198,8 +213,8 @@ async def fetch_brand_sentiment(
             try:
                 posts = await _fetch_reddit_sentiment(brand, timeframe, limit=25)
                 texts = [p["title"] + " " + p["body"] for p in posts]
-                sentiment = _score_sentiment(texts)
-                top = [{"title": p["title"], "url": p["url"], "score": p["score"]} for p in posts[:5]]
+                sentiment, labels = _score_sentiment(texts)
+                top = _bucket_top_posts(posts, labels, score_key="score")
                 results.append({"brand": brand, "platform": "reddit", "total_posts": len(posts), **sentiment, "top_posts": top})
             except Exception as e:
                 results.append({"brand": brand, "platform": "reddit", "status": f"unavailable: {e}"})
@@ -210,8 +225,8 @@ async def fetch_brand_sentiment(
                 if api_posts:
                     # API path — structured data, reliable
                     texts = [p["title"] for p in api_posts]
-                    sentiment = _score_sentiment(texts)
-                    top = [{"title": p["title"], "url": p["url"], "score": p["score"]} for p in api_posts[:5]]
+                    sentiment, labels = _score_sentiment(texts)
+                    top = _bucket_top_posts(api_posts, labels, score_key="score")
                     results.append({
                         "brand": brand, "platform": "twitter",
                         "source": "twitter_api_v2",
@@ -227,8 +242,8 @@ async def fetch_brand_sentiment(
                         results.append({"brand": brand, "platform": "twitter", "status": "insufficient_data: set TWITTER_BEARER_TOKEN for reliable data"})
                     else:
                         texts = [r.get("title", "") + " " + r.get("body", "") for r in relevant]
-                        sentiment = _score_sentiment(texts)
-                        top = [{"title": r.get("title", ""), "url": r.get("href", ""), "score": 0} for r in relevant[:5]]
+                        sentiment, labels = _score_sentiment(texts)
+                        top = _bucket_top_posts(relevant, labels, url_key="href")
                         results.append({
                             "brand": brand, "platform": "twitter",
                             "source": "ddgs_fallback",
@@ -248,8 +263,8 @@ async def fetch_brand_sentiment(
                     results.append({"brand": brand, "platform": "linkedin", "status": "insufficient_data: fewer than 3 indexed posts found"})
                 else:
                     texts = [r.get("title", "") + " " + r.get("body", "") for r in relevant]
-                    sentiment = _score_sentiment(texts)
-                    top = [{"title": r.get("title", ""), "url": r.get("href", ""), "score": 0} for r in relevant[:5]]
+                    sentiment, labels = _score_sentiment(texts)
+                    top = _bucket_top_posts(relevant, labels, url_key="href")
                     results.append({"brand": brand, "platform": "linkedin", "total_posts": len(relevant), **sentiment, "top_posts": top})
             except Exception as e:
                 results.append({"brand": brand, "platform": "linkedin", "status": f"unavailable: {e}"})

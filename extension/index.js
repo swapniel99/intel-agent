@@ -196,6 +196,7 @@ Rules (CRITICAL):
 - summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
 - Use metrics for KPI numbers. Use chart for visualizations. Use table for comparisons.
 - layout="auto" always works — backend picks the best layout. Only set layout explicitly for "split".
+- When showing sentiment results, ALWAYS include total_posts count per platform (e.g. "Based on 50 tweets" or "Analyzed 25 Reddit posts"). Surface this in the summary and/or as a metric.
 `;
 
   const MAX_TURNS = 12;
