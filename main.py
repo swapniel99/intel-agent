@@ -380,12 +380,12 @@ def fetch_search_presence(
     brands: e.g. ["PharmEasy", "Tata 1mg", "Apollo", "HMS"]
     keywords: e.g. ["buy medicine online", "online pharmacy india", "order medicines"]
 
-    Returns: [{keyword, brand, rank, present, url, title, snippet, presence_confidence, source_backend, top_results}]
-    rank: 1-indexed best position across 3 DDGS runs; null if not found.
-    present: True only if found in ≥2/3 runs within top 10.
-    presence_confidence: "X/3" — how many runs detected the brand.
+    Returns: [{keyword, brand, rank, present, url, title, snippet, source_backend, top_results}]
+    rank: 1-indexed position in results; null if not found in top 10.
+    present: True if found within top 10.
     title/snippet: page title and excerpt from the matched result for verification.
-    top_results: top-5 organic results from first run [{rank, title, url, snippet}] for full context.
+    source_backend: which DDGS backend served the results (e.g. "yahoo", "mojeek").
+    top_results: top-5 organic results [{rank, title, url, snippet}] for full context.
     Use keywords specific to India e.g. "buy medicines online india" not generic US terms.
     """
     logger.info(f"Tool Call: fetch_search_presence(brands={brands}, keywords={keywords})")
@@ -403,51 +403,30 @@ def fetch_search_presence(
 
     for keyword in keywords:
         try:
-            # DDGS backend rotation causes per-call rank drift.
-            # Strategy: 3 independent queries, track best rank + how many runs found each brand.
-            # Report best_rank (min across runs) + presence_confidence (X/3 runs found).
-            # present = found in ≥2 of 3 runs within top 10.
-            brand_best_rank: dict[str, int | None] = {b: None for b in brands}
-            brand_found_runs: dict[str, int] = {b: 0 for b in brands}
-            brand_url: dict[str, str | None] = {b: None for b in brands}
-            brand_title: dict[str, str | None] = {b: None for b in brands}
-            brand_snippet: dict[str, str | None] = {b: None for b in brands}
-            top_results_snapshot: list[dict] = []
-            source_backend = "unknown"
-
-            for run_i in range(3):
-                hits, backend_used = _ddgs_text_with_fallback(keyword, region="in-en", max_results=10)
-                if run_i == 0:
-                    source_backend = backend_used
-                    top_results_snapshot = [
-                        {"rank": i, "title": h.get("title", ""), "url": h.get("href", ""), "snippet": h.get("body", "")[:120]}
-                        for i, h in enumerate(hits[:5], start=1)
-                    ]
-                for brand in brands:
-                    domain = domain_map.get(brand.lower(), "")
-                    for i, h in enumerate(hits, start=1):
-                        href = h.get("href", "")
-                        if _domain_match(domain, href):
-                            brand_found_runs[brand] += 1
-                            if brand_best_rank[brand] is None or i < brand_best_rank[brand]:
-                                brand_best_rank[brand] = i
-                                brand_url[brand] = href
-                                brand_title[brand] = h.get("title", "")
-                                brand_snippet[brand] = h.get("body", "")[:120]
-                            break
+            hits, source_backend = _ddgs_text_with_fallback(keyword, region="in-en", max_results=10)
+            top_results_snapshot = [
+                {"rank": i, "title": h.get("title", ""), "url": h.get("href", ""), "snippet": h.get("body", "")[:120]}
+                for i, h in enumerate(hits[:5], start=1)
+            ]
 
             for brand in brands:
-                best = brand_best_rank[brand]
-                found = brand_found_runs[brand]
+                domain = domain_map.get(brand.lower(), "")
+                rank, url, title, snippet = None, None, None, None
+                for i, h in enumerate(hits, start=1):
+                    href = h.get("href", "")
+                    if _domain_match(domain, href):
+                        rank, url = i, href
+                        title = h.get("title", "")
+                        snippet = h.get("body", "")[:120]
+                        break
                 results.append({
                     "keyword": keyword,
                     "brand": brand,
-                    "rank": best,
-                    "present": found >= 2 and best is not None and best <= 10,
-                    "url": brand_url[brand],
-                    "title": brand_title[brand],
-                    "snippet": brand_snippet[brand],
-                    "presence_confidence": f"{found}/3",
+                    "rank": rank,
+                    "present": rank is not None and rank <= 10,
+                    "url": url,
+                    "title": title,
+                    "snippet": snippet,
                     "source_backend": source_backend,
                     "top_results": top_results_snapshot,
                 })
