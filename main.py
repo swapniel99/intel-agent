@@ -1,6 +1,5 @@
 import json
 import os
-import re
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -21,20 +20,13 @@ from prefab_ui.components import Column, Muted
 
 _CHART_TYPES = {"bar", "line", "area", "pie", "radar", "radial"}
 
-_POSITIVE_WORDS = {
-    "great", "love", "best", "fast", "easy", "excellent", "happy", "discount",
-    "amazing", "reliable", "good", "quick", "convenient", "affordable", "genuine",
-    "trusted", "recommend", "perfect", "smooth", "helpful", "awesome", "fantastic",
-    "efficient", "safe", "legit", "original", "cheap", "savings", "prompt", "accurate",
-}
-
-_NEGATIVE_WORDS = {
-    "bad", "worst", "terrible", "delay", "refund", "problem", "issue", "scam",
-    "fake", "awful", "slow", "fraud", "pathetic", "horrible", "useless", "broken",
-    "wrong", "missing", "expired", "damaged", "lost", "late", "cancelled", "blocked",
-    "failed", "error", "poor", "disgrace", "cheat", "ripped", "overpriced", "disappointing",
-    "complaint", "defective", "unreliable", "dangerous",
-}
+from transformers import pipeline as _hf_pipeline
+_sentiment_pipeline = _hf_pipeline(
+    "sentiment-analysis",
+    model="cardiffnlp/twitter-roberta-base-sentiment-latest",
+    truncation=True,
+    max_length=512,
+)
 
 _TIER1_CITIES = {
     "mumbai", "delhi", "bangalore", "bengaluru", "chennai", "hyderabad",
@@ -149,17 +141,10 @@ async def _fetch_twitter_api(brand: str, timeframe: str, limit: int = 50) -> lis
 
 
 def _score_sentiment(texts: list[str]) -> dict:
-    pos_posts = neg_posts = neutral_posts = 0
-    for text in texts:
-        words = set(re.findall(r'\b\w+\b', text.lower()))
-        p = len(words & _POSITIVE_WORDS)
-        n = len(words & _NEGATIVE_WORDS)
-        if p > n:
-            pos_posts += 1
-        elif n > p:
-            neg_posts += 1
-        else:
-            neutral_posts += 1
+    results = _sentiment_pipeline(texts, batch_size=16)
+    pos_posts = sum(1 for r in results if r["label"] == "positive")
+    neg_posts = sum(1 for r in results if r["label"] == "negative")
+    neutral_posts = sum(1 for r in results if r["label"] == "neutral")
     total = max(len(texts), 1)
     pos_pct = round(pos_posts / total * 100)
     neg_pct = round(neg_posts / total * 100)
