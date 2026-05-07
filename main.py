@@ -192,7 +192,7 @@ async def fetch_brand_sentiment(
 ) -> list[dict]:
     """Fetch social media sentiment for pharma brands from Reddit, Twitter/X, and LinkedIn.
 
-    brands: list of brand names e.g. ["PharmEasy", "1mg", "Apollo", "HMS"]
+    brands: list of brand names e.g. ["PharmEasy", "Tata 1mg", "Apollo", "HMS"]
     platforms: list of platforms e.g. ["reddit", "twitter"] or a single string "reddit" | "twitter" | "linkedin" | "all"
     timeframe: "d" (day) | "w" (week, default) | "m" (month)
 
@@ -377,7 +377,7 @@ def fetch_search_presence(
 ) -> list[dict]:
     """Check where pharma brands appear in search results for given keywords.
 
-    brands: e.g. ["PharmEasy", "1mg", "Apollo", "HMS"]
+    brands: e.g. ["PharmEasy", "Tata 1mg", "Apollo", "HMS"]
     keywords: e.g. ["buy medicine online", "online pharmacy india", "order medicines"]
 
     Returns: [{keyword, brand, rank, present, url, title, snippet, presence_confidence, source_backend, top_results}]

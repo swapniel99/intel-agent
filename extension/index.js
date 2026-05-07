@@ -537,16 +537,16 @@ function setPreset(text) {
 }
 
 $presetSentiment.addEventListener("click", () =>
-  setPreset("Compare sentiment for PharmEasy vs 1mg vs Apollo Pharmacy on Reddit and Twitter this week.")
+  setPreset("Compare sentiment for PharmEasy vs Tata 1mg vs Apollo Pharmacy on Reddit and Twitter this week.")
 );
-$presetTrends.addEventListener("click", () =>
-  setPreset("Show Google Trends interest for 'online pharmacy' across tier1 and tier2 Indian cities this month.")
-);
+// $presetTrends.addEventListener("click", () =>
+//   setPreset("Show Google Trends interest for 'online pharmacy' across tier1 and tier2 Indian cities this month.")
+// );
 $presetRankings.addEventListener("click", () =>
-  setPreset("Check search rankings for PharmEasy vs 1mg vs Apollo Pharmacy vs Netmeds for 'buy medicines online india' and 'medicine delivery app india'.")
+  setPreset("Check search rankings for PharmEasy vs Tata 1mg vs Apollo Pharmacy vs Netmeds for 'buy medicines online india' and 'medicine delivery app india'.")
 );
 $presetAnalysis.addEventListener("click", () =>
-  setPreset("Run a full competitive analysis for PharmEasy vs 1mg vs Apollo Pharmacy: sentiment on Reddit and Twitter, Google Trends for 'online pharmacy' in tier1 cities, and search rankings for 'buy medicines online india'.")
+  setPreset("Run a full competitive analysis for PharmEasy vs Tata 1mg vs Apollo Pharmacy: sentiment on Reddit and Twitter, and search rankings for 'buy medicines online india'.")
 );
 
 // ── Resizable panels ──────────────────────────────────────────────────────────
