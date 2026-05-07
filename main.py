@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 import logging
 from datetime import datetime, timezone
@@ -139,7 +140,8 @@ async def _fetch_reddit(query: str, limit: int) -> list[dict]:
 
 async def _fetch_reddit_sentiment(brand: str, timeframe: str, limit: int = 25) -> list[dict]:
     t = _REDDIT_TIMEFRAME.get(timeframe, "week")
-    url = f"https://www.reddit.com/search.json?q={brand}&sort=new&t={t}&limit={limit}"
+    from urllib.parse import quote
+    url = f"https://www.reddit.com/search.json?q=%22{quote(brand)}%22&sort=new&t={t}&limit={limit}"
     headers = {"User-Agent": "IntelAgent/1.0"}
     async with httpx.AsyncClient(timeout=15, headers=headers) as client:
         resp = await client.get(url)
@@ -161,7 +163,7 @@ async def _fetch_reddit_sentiment(brand: str, timeframe: str, limit: int = 25) -
 def _score_sentiment(texts: list[str]) -> dict:
     pos_posts = neg_posts = neutral_posts = 0
     for text in texts:
-        words = set(text.lower().split())
+        words = set(re.findall(r'\b\w+\b', text.lower()))
         p = len(words & _POSITIVE_WORDS)
         n = len(words & _NEGATIVE_WORDS)
         if p > n:
@@ -464,7 +466,8 @@ def fetch_search_presence(
                 rank = None
                 url = None
                 for i, h in enumerate(hits, start=1):
-                    if domain in h.get("href", ""):
+                    href = h.get("href", "")
+                    if domain in href and (f".{domain}" in href or f"/{domain}" in href or href.startswith(f"https://{domain}") or href.startswith(f"http://{domain}")):
                         rank = i
                         url = h["href"]
                         break
