@@ -558,7 +558,14 @@ def render_dashboard(
         Each: {label, value, delta?, trend?: "up|down|neutral", trendSentiment?: "positive|negative|neutral"}
         Example: {"label": "Stars", "value": "92K", "delta": "+12%", "trend": "up", "trendSentiment": "positive"}
 
-    chart: one chart.
+    chart: one chart. 'type' is REQUIRED — must be one of: "bar" | "line" | "area" | "pie" | "radar" | "radial"
+        Choose type based on data shape:
+          "bar"    → compare discrete categories (brand rankings, sentiment %, search rank)
+          "line"   → trend over time
+          "area"   → trend over time with volume emphasis
+          "pie"    → part-of-whole distribution (e.g. sentiment breakdown for one brand)
+          "radar"  → multi-axis comparison across same set of dimensions
+          "radial" → single metric as radial progress gauge
         SIMPLE (pie/bar/line/area):   {type, title?, labels: ["A","B"], values: [10,20]}
         MULTIVARIATE (bar/line/area): {type, title?, data: [{"x":"A","val":10}], series: [{dataKey:"val", label:"Metric"}], xAxis:"x"}
         PIE/RADIAL:                   {type, data: [{"cat":"X","pct":40}], dataKey:"pct", nameKey:"cat"}
