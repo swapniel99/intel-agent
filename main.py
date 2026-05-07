@@ -330,25 +330,34 @@ def fetch_content_trends(
         return [{"status": f"fetch_content_trends error: {err}"}]
 
 
-# Order: duckduckgo (stable) → mojeek → yahoo (Bing-powered, good India coverage) → brave (rate-limits fast) → yandex (weak India)
-_DDGS_BACKEND_CHAIN = ["duckduckgo", "mojeek", "yahoo", "brave", "yandex"]
+# Order: yahoo (Bing-powered, good India coverage) → yandex (weak India)
+_DDGS_BACKEND_CHAIN = ["yahoo", "yandex"]
+
+
+_DDGS_PRIMARY_RETRIES = 5   # retries for first backend before giving up on it
+_DDGS_FALLBACK_RETRIES = 2  # retries for subsequent backends
+_DDGS_BACKEND_RETRY_DELAY = 0.5  # seconds between retries
 
 
 def _ddgs_text_with_fallback(query: str, **kwargs) -> tuple[list[dict], str]:
-    """Try backends in order; return (hits, backend_used).
-
-    DDGS silently falls back to 'auto' for unknown backends instead of raising,
-    so we validate against the known-available set.
-    """
+    """Try primary backend aggressively; only fall back if it consistently fails."""
+    import time
     last_err = None
-    for backend in _DDGS_BACKEND_CHAIN:
-        try:
-            hits = list(DDGS().text(query, backend=backend, **kwargs))
-            if hits:
-                return hits, backend
-        except Exception as e:
-            last_err = e
-            logger.warning(f"DDGS backend '{backend}' failed: {e}")
+    for i, backend in enumerate(_DDGS_BACKEND_CHAIN):
+        retries = _DDGS_PRIMARY_RETRIES if i == 0 else _DDGS_FALLBACK_RETRIES
+        for attempt in range(retries):
+            try:
+                hits = list(DDGS().text(query, backend=backend, **kwargs))
+                if hits:
+                    return hits, backend
+                if attempt < retries - 1:
+                    time.sleep(_DDGS_BACKEND_RETRY_DELAY)
+            except Exception as e:
+                last_err = e
+                if attempt < retries - 1:
+                    time.sleep(_DDGS_BACKEND_RETRY_DELAY)
+                else:
+                    logger.warning(f"DDGS backend '{backend}' failed after {retries} attempts: {e}")
     # All specific backends exhausted — last resort: auto
     try:
         hits = list(DDGS().text(query, **kwargs))
