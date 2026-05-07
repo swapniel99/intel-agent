@@ -44,6 +44,7 @@ _BRAND_DOMAINS: dict[str, str] = {
     "pharmeasy": "pharmeasy.in",
     "1mg": "1mg.com",
     "apollo": "apollopharmacy.in",
+    "netmeds": "netmeds.com",
     "hms": "hms.co.in",
 }
 
@@ -108,8 +109,8 @@ async def _fetch_reddit_sentiment(brand: str, timeframe: str, limit: int = 25) -
 
 
 async def _fetch_twitter_api(brand: str, timeframe: str, limit: int = 50) -> list[dict]:
-    """Fetch tweets via Twitter API v2 recent search. Requires TWITTER_BEARER_TOKEN env var.
-    Free tier: last 7 days, 500K tweets/month. Returns [] if token absent."""
+    """Fetch tweets via Twitter API v2 recent search. Requires TWITTER_BEARER_TOKEN in .env.
+    Recent search capped at 7 days regardless of timeframe param. Returns [] if token absent."""
     if not _TWITTER_BEARER_TOKEN:
         return []
     days = _TWITTER_LOOKBACK_DAYS.get(timeframe, 7)
@@ -181,7 +182,9 @@ async def fetch_brand_sentiment(
     timeframe: "d" (day) | "w" (week, default) | "m" (month)
 
     Returns: [{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]
+    On insufficient data: [{brand, platform, status}] sentinel instead.
     Sentiment score in [-1.0, 1.0]: positive=closer to 1, negative=closer to -1.
+    Sentiment scored by RoBERTa model (twitter-roberta-base-sentiment-latest).
     """
     logger.info(f"Tool Call: fetch_brand_sentiment(brands={brands}, platforms='{platforms}', timeframe='{timeframe}')")
 
@@ -317,8 +320,11 @@ def fetch_search_presence(
     brands: e.g. ["PharmEasy", "1mg", "Apollo", "HMS"]
     keywords: e.g. ["buy medicine online", "online pharmacy india", "order medicines"]
 
-    Returns: [{keyword, brand, rank, present, url}]
-    rank is 1-indexed position in top 10 results; null if not found.
+    Returns: [{keyword, brand, rank, present, url, presence_confidence}]
+    rank: 1-indexed best position across 3 DDGS runs; null if not found.
+    present: True only if found in ≥2/3 runs within top 10.
+    presence_confidence: "X/3" — how many runs detected the brand.
+    Use keywords specific to India e.g. "buy medicines online india" not generic US terms.
     """
     logger.info(f"Tool Call: fetch_search_presence(brands={brands}, keywords={keywords})")
 
