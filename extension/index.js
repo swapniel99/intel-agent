@@ -31,6 +31,7 @@ const $clearBtn = document.getElementById("clear-btn");
 const $presetSentiment = document.getElementById("preset-sentiment");
 const $presetTrends = document.getElementById("preset-trends");
 const $presetRankings = document.getElementById("preset-rankings");
+const $presetAnalysis = document.getElementById("preset-analysis");
 
 let mcpTools = [];
 let geminiApiKey = "";
@@ -535,13 +536,16 @@ function setPreset(text) {
 }
 
 $presetSentiment.addEventListener("click", () =>
-  setPreset("Show daily sentiment for PharmEasy vs 1mg vs Apollo on Reddit and Twitter")
+  setPreset("Compare sentiment for PharmEasy vs 1mg vs Apollo Pharmacy on Reddit and Twitter this week.")
 );
 $presetTrends.addEventListener("click", () =>
-  setPreset("What health content is trending in tier 1 and tier 2 cities this month?")
+  setPreset("Show Google Trends interest for 'online pharmacy' across tier1 and tier2 Indian cities this month.")
 );
 $presetRankings.addEventListener("click", () =>
-  setPreset("Where does PharmEasy rank vs 1mg and Apollo for key pharmacy searches?")
+  setPreset("Check search rankings for PharmEasy vs 1mg vs Apollo Pharmacy vs Netmeds for 'buy medicines online india' and 'medicine delivery app india'.")
+);
+$presetAnalysis.addEventListener("click", () =>
+  setPreset("Run a full competitive analysis for PharmEasy vs 1mg vs Apollo Pharmacy: sentiment on Reddit and Twitter, Google Trends for 'online pharmacy' in tier1 cities, and search rankings for 'buy medicines online india'.")
 );
 
 // ── Resizable panels ──────────────────────────────────────────────────────────

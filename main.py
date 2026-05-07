@@ -4,6 +4,9 @@ import re
 import logging
 from datetime import datetime, timedelta, timezone
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import httpx
 from ddgs import DDGS
 from pytrends_modern import TrendReq

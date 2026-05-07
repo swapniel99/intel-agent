@@ -9,6 +9,7 @@ dependencies = [
     "fastmcp>=3.2.4",
     "httpx>=0.28.1",
     "prefab-ui>=0.19.1",
+    "python-dotenv>=1.2.2",
     "pytrends-modern[selenium]>=0.2.5",
     "uvicorn[standard]>=0.34.0",
 ]

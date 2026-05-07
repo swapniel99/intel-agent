@@ -470,6 +470,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "httpx" },
     { name = "prefab-ui" },
+    { name = "python-dotenv" },
     { name = "pytrends-modern", extra = ["selenium"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -486,6 +487,7 @@ requires-dist = [
     { name = "fastmcp", specifier = ">=3.2.4" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "prefab-ui", specifier = ">=0.19.1" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pytrends-modern", extras = ["selenium"], specifier = ">=0.2.5" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
 ]
