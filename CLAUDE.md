@@ -26,12 +26,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Backend (Python 3.14 + FastMCP)
 Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves the last rendered prefab HTML for iframe loading.
 
-**3 MCP tools** (web search delegated to Gemini built-in `googleSearch`, not MCP):
+**6 MCP tools** (web search delegated to Gemini built-in `googleSearch`, not MCP):
 | Tool | Type | Details |
 |---|---|---|
 | `fetch_tech_news` | Internet | Fetches from HN (Algolia), Dev.to, or Reddit; `source` param: `"hn"` | `"dev"` | `"reddit"` | `"all"` (default). Returns `[{title,url,points,source}]`. Falls back to `saved_articles.json` on failure. |
 | `manage_local_library` | File CRUD | 6 actions on `saved_articles.json`: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. Deduplicates by URL. |
 | `render_dashboard` | UI | Compiles research into a rich HTML dashboard. Supports 6 chart types (Bar, Line, Area, Pie, Radar, Radial), metrics, tables, and multiple layouts (`auto`, `kpi_grid`, `chart_focus`, `table_report`, `split`). |
+| `fetch_brand_sentiment` | Marketing | Keyword sentiment for brands across Reddit/Twitter/LinkedIn. Params: `brands`, `platforms`, `timeframe`. Returns per-platform sentiment scores + top posts. |
+| `fetch_content_trends` | Marketing | Google Trends interest by Indian city/tier for a topic. Params: `topic`, `region_tier`, `timeframe`. Returns `[{city, tier, interest_score, related_queries}]`. |
+| `fetch_search_presence` | Marketing | DuckDuckGo rank check for brands across search keywords. Params: `brands`, `keywords`. Returns `[{keyword, brand, rank, present, url}]`. |
 
 `search_internet` (DuckDuckGo via `ddgs`) removed. Replaced by Gemini native `googleSearch` tool wired in `index.js`.
 
@@ -47,10 +50,13 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 
 ```bash
 # Backend — one-time setup (uses uv, not pip directly)
-uv sync                   # installs fastmcp, httpx, prefab-ui, uvicorn from uv.lock
+uv sync                   # installs fastmcp, httpx, prefab-ui, uvicorn, ddgs, pytrends from uv.lock
 
 # Backend — run server
 ./.venv/bin/python main.py            # http://localhost:8000 (streamable-http transport)
+
+# Backend — run server with optional Twitter API (free tier: last 7 days, 500K tweets/month)
+TWITTER_BEARER_TOKEN=xxx ./.venv/bin/python main.py
 
 # Backend — verify server connectivity and logic
 pytest test_mcp_server.py  # comprehensive integration test suite for tools and routes

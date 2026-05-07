@@ -409,6 +409,30 @@
       cursor: not-allowed;
     }
 
+    #preset-btns {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 3px 8px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .preset-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      background: var(--bg-input);
+    }
+
     #status-bar {
       font-size: 11px;
       color: var(--text-muted);
@@ -480,10 +504,15 @@
       <div id="chat-header">Chat History</div>
       <div id="chat-history"></div>
       <div id="prompt-section">
+        <div id="preset-btns">
+          <button class="preset-btn" id="preset-sentiment">Daily Sentiment</button>
+          <button class="preset-btn" id="preset-trends">Content Trends</button>
+          <button class="preset-btn" id="preset-rankings">Search Rankings</button>
+        </div>
         <div id="prompt-container">
           <textarea
             id="prompt-input"
-            placeholder='e.g. "Fetch top 4 articles on Local LLMs."'
+            placeholder='e.g. "Show sentiment for PharmEasy vs 1mg this week."'
           ></textarea>
           <button id="run-btn" disabled>Send</button>
         </div>

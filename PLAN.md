@@ -144,9 +144,9 @@ Buttons styled consistently with existing UI (dark/light theme aware).
 - [x] **Step 5** — `main.py`: implement `fetch_content_trends` tool (fixed: `interest_by_region()` takes no `geo` param)
 - [x] **Step 6** — `main.py`: implement `fetch_search_presence` tool
 - [x] **Step 7 (smoke test)** — 6 tools confirmed; `fetch_brand_sentiment` ✅ `fetch_search_presence` ✅ `fetch_content_trends` ✅ (429 handled gracefully — Google rate-limit is external)
-- [ ] **Step 8** — `extension/index.js`: add `MARKETING_INTEL` intent to system prompt
-- [ ] **Step 9** — `extension/index.html` + `index.js`: add quick-action buttons
-- [ ] **Step 10** — `CLAUDE.md`: update Setup section
+- [x] **Step 8** — `extension/index.js`: add `MARKETING_INTEL` intent to system prompt
+- [x] **Step 9** — `extension/index.html` + `index.js`: add quick-action buttons
+- [x] **Step 10** — `CLAUDE.md`: update Setup section
 
 ---
 

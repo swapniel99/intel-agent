@@ -28,6 +28,9 @@ const $chatPanel = document.getElementById("chat-panel");
 const $mainView = document.getElementById("main-view");
 const $undoBtn = document.getElementById("undo-btn");
 const $clearBtn = document.getElementById("clear-btn");
+const $presetSentiment = document.getElementById("preset-sentiment");
+const $presetTrends = document.getElementById("preset-trends");
+const $presetRankings = document.getElementById("preset-rankings");
 
 let mcpTools = [];
 let geminiApiKey = "";
@@ -180,23 +183,17 @@ Current Date and Time: ${now}
 Pick tools based on the user's intent.
 
 Intent classification:
-- HYBRID_RESEARCH: latest info + saved knowledge.
-  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → MERGE all results → manage_local_library(save_new) → render_dashboard(cards=[...])
-- ARTICLE_CURATION: list/feed/digest of new articles.
-  → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_dashboard(cards=[...])
-- LIBRARY_MANAGEMENT: browse, search, or clean local collection.
-  → render_dashboard(cards=[...])
-- METRICS_ANALYSIS: KPIs, comparisons, benchmarks, market data, structured data reports.
-  → gather data (Google Search / fetch_tech_news) → identify metrics, trends, rankings → render_dashboard(metrics=[...], chart=..., layout="auto")
-- TREND_ANALYSIS: charts + data visualization with metrics.
-  → gather data → identify quantitative metrics → render_dashboard(chart=..., metrics=[...], layout="auto")
+- MARKETING_INTEL: brand sentiment, competitor comparison, content trends, search rankings.
+  → fetch_brand_sentiment → fetch_search_presence → fetch_content_trends
+  → render_dashboard(metrics=[...], chart=..., table=..., layout="split")
+  Use metrics for sentiment scores, chart (bar/radar) for brand comparisons, table for ranking data.
 
 Rules (CRITICAL):
 - ALWAYS call render_dashboard when finished. It is the only output surface.
 - PRO-ACTIVELY USE CHARTS: If you are dealing with numerical data, comparisons, or time-series, ALWAYS include a suitable chart in render_dashboard.
 - Do NOT emit text outside of tool calls.
 - summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
-- Use cards for article feeds. Use metrics for KPI numbers. Use chart for visualizations. Use table for comparisons.
+- Use metrics for KPI numbers. Use chart for visualizations. Use table for comparisons.
 - layout="auto" always works — backend picks the best layout. Only set layout explicitly for "split".
 `;
 
@@ -225,7 +222,7 @@ Rules (CRITICAL):
             includeServerSideToolInvocations: true,
           }),
         },
-        generationConfig: { temperature: 0.2 },
+        generationConfig: { temperature: 0 },
       },
     });
 
@@ -507,6 +504,24 @@ $clearBtn.addEventListener("click", () => {
     updateChatButtonStates();
   }
 });
+
+// ── Preset buttons ────────────────────────────────────────────────────────────
+
+function setPreset(text) {
+  $promptInput.value = text;
+  $promptInput.dispatchEvent(new Event("input"));
+  $promptInput.focus();
+}
+
+$presetSentiment.addEventListener("click", () =>
+  setPreset("Show daily sentiment for PharmEasy vs 1mg vs Apollo on Reddit and Twitter")
+);
+$presetTrends.addEventListener("click", () =>
+  setPreset("What health content is trending in tier 1 and tier 2 cities this month?")
+);
+$presetRankings.addEventListener("click", () =>
+  setPreset("Where does PharmEasy rank vs 1mg and Apollo for key pharmacy searches?")
+);
 
 // ── Resizable panels ──────────────────────────────────────────────────────────
 

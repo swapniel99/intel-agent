@@ -1,9 +1,8 @@
 import json
+import os
 import re
-import uuid
 import logging
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 import urllib3
 
@@ -64,6 +63,19 @@ _BRAND_DOMAINS: dict[str, str] = {
 
 _REDDIT_TIMEFRAME: dict[str, str] = {"d": "day", "w": "week", "m": "month"}
 
+# Brand-specific Twitter search queries — disambiguates short/ambiguous names
+_TWITTER_BRAND_QUERY: dict[str, str] = {
+    "pharmeasy": '"PharmEasy" OR "@pharmeasyapp"',
+    "1mg": '"Tata 1mg" OR "@1mgIndia"',
+    "apollo": '"Apollo Pharmacy" OR "@ApolloPharmacy"',
+    "hms": '"HMS Health" OR "@hmshealth"',
+}
+
+# Twitter API v2 — set TWITTER_BEARER_TOKEN env var to enable; falls back to DDGS if absent
+_TWITTER_BEARER_TOKEN: str = os.getenv("TWITTER_BEARER_TOKEN", "")
+# Recent search endpoint max window is 7 days regardless of tier; full archive needs Pro
+_TWITTER_LOOKBACK_DAYS: dict[str, int] = {"d": 1, "w": 7, "m": 7}
+
 _LAST_DASHBOARD_HTML: str = ""
 
 logging.basicConfig(
@@ -71,8 +83,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("IntelAgent")
-
-LIBRARY_FILE = Path(__file__).parent / "saved_articles.json"
 
 mcp = FastMCP("IntelAgent")
 
@@ -88,60 +98,11 @@ _cors_middleware = [
 ]
 
 
-def _load_library() -> list[dict]:
-    if not LIBRARY_FILE.exists():
-        return []
-    return json.loads(LIBRARY_FILE.read_text())
-
-
-def _save_library(articles: list[dict]) -> None:
-    LIBRARY_FILE.write_text(json.dumps(articles, indent=2))
-
-
-async def _fetch_hn(query: str, limit: int) -> list[dict]:
-    """Fetch from Hacker News (Algolia)."""
-    url = f"https://hn.algolia.com/api/v1/search?query={query}&hitsPerPage={limit}"
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-    hits = resp.json().get("hits", [])
-    return [
-        {"title": h.get("title", ""), "url": h.get("url", ""), "points": h.get("points", 0), "source": "hn"}
-        for h in hits if h.get("url")
-    ]
-
-
-async def _fetch_dev(query: str, limit: int) -> list[dict]:
-    """Fetch from Dev.to."""
-    url = f"https://dev.to/api/articles?tag={query}&per_page={limit}"
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-    articles = resp.json()
-    return [
-        {"title": a.get("title", ""), "url": a.get("url", ""), "points": a.get("positive_reactions_count", 0), "source": "dev"}
-        for a in articles
-    ]
-
-
-async def _fetch_reddit(query: str, limit: int) -> list[dict]:
-    """Fetch from Reddit."""
-    url = f"https://www.reddit.com/r/all/search.json?q={query}&limit={limit}"
-    headers = {"User-Agent": "IntelAgent/1.0"}
-    async with httpx.AsyncClient(timeout=10, headers=headers) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-    posts = resp.json().get("data", {}).get("children", [])
-    return [
-        {"title": p["data"].get("title", ""), "url": p["data"].get("url", ""), "points": p["data"].get("score", 0), "source": "reddit"}
-        for p in posts if p["data"].get("url")
-    ]
-
 
 async def _fetch_reddit_sentiment(brand: str, timeframe: str, limit: int = 25) -> list[dict]:
     t = _REDDIT_TIMEFRAME.get(timeframe, "week")
     from urllib.parse import quote
-    url = f"https://www.reddit.com/search.json?q=%22{quote(brand)}%22&sort=new&t={t}&limit={limit}"
+    url = f"https://www.reddit.com/search.json?q=%22{quote(brand)}%22&sort=top&t={t}&limit={limit}"
     headers = {"User-Agent": "IntelAgent/1.0"}
     async with httpx.AsyncClient(timeout=15, headers=headers) as client:
         resp = await client.get(url)
@@ -157,6 +118,39 @@ async def _fetch_reddit_sentiment(brand: str, timeframe: str, limit: int = 25) -
             "subreddit": p["data"].get("subreddit", ""),
         }
         for p in posts
+    ]
+
+
+async def _fetch_twitter_api(brand: str, timeframe: str, limit: int = 50) -> list[dict]:
+    """Fetch tweets via Twitter API v2 recent search. Requires TWITTER_BEARER_TOKEN env var.
+    Free tier: last 7 days, 500K tweets/month. Returns [] if token absent."""
+    if not _TWITTER_BEARER_TOKEN:
+        return []
+    days = _TWITTER_LOOKBACK_DAYS.get(timeframe, 7)
+    start_time = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    brand_expr = _TWITTER_BRAND_QUERY.get(brand.lower(), f'"{brand}"')
+    query = f"({brand_expr}) -is:retweet lang:en"
+    url = "https://api.twitter.com/2/tweets/search/recent"
+    params = {
+        "query": query,
+        "max_results": min(limit, 100),
+        "start_time": start_time,
+        "tweet.fields": "text,public_metrics,created_at",
+    }
+    headers = {"Authorization": f"Bearer {_TWITTER_BEARER_TOKEN}"}
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(url, params=params, headers=headers)
+        resp.raise_for_status()
+    data = resp.json()
+    tweets = data.get("data") or []
+    return [
+        {
+            "title": t.get("text", "")[:280],
+            "body": "",
+            "url": f"https://x.com/i/web/status/{t['id']}",
+            "score": t.get("public_metrics", {}).get("like_count", 0),
+        }
+        for t in tweets
     ]
 
 
@@ -194,135 +188,6 @@ def _city_tier(city: str) -> str:
     return "tier3"
 
 
-@mcp.tool()
-async def fetch_tech_news(query: str, limit: int = 10, source: str = "all") -> list[dict]:
-    """Fetch articles from multiple sources.
-
-    source: 'hn' (Hacker News), 'dev' (Dev.to), 'reddit', or 'all' (combines all sources).
-    Returns: [{title, url, points, source}]
-    """
-    logger.info(f"Tool Call: fetch_tech_news(query='{query}', limit={limit}, source='{source}')")
-
-    try:
-        if source == "hn":
-            return await _fetch_hn(query, limit)
-        elif source == "dev":
-            return await _fetch_dev(query, limit)
-        elif source == "reddit":
-            return await _fetch_reddit(query, limit)
-        elif source == "all":
-            per_source = max(1, limit // 3)
-            hn = await _fetch_hn(query, per_source)
-            dev = await _fetch_dev(query, per_source)
-            reddit = await _fetch_reddit(query, per_source)
-            return (hn + dev + reddit)[:limit]
-        else:
-            return [{"status": f"Unknown source '{source}'. Use 'hn', 'dev', 'reddit', or 'all'."}]
-    except Exception:
-        cached = _load_library()
-        status = {"status": "The internet sources are currently unavailable. Displaying previously saved articles from your local storage."}
-        if cached:
-            articles = [
-                {"title": a["title"], "url": a["url"], "points": a.get("points", 0), "source": "cache"}
-                for a in cached
-            ]
-            return [status] + articles
-        return [status]
-
-
-@mcp.tool()
-def manage_local_library(
-    action: str,
-    articles: list[dict] | None = None,
-    article_id: str | None = None,
-    updates: dict | None = None,
-    query: str | None = None
-) -> dict:
-    """Read/write the local saved_articles.json library.
-
-    action='check_duplicates': Returns {status, articles} with novel articles not yet in library.
-        RECOMMENDED: Call this before 'save_new' to filter results.
-    action='save_new': Appends articles (deduped by URL) to the JSON ledger.
-        REQUIREMENT: Articles must include 'ai_summary' (1-sentence max).
-    action='list_all': Returns the entire archive for browsing.
-    action='search': Filters the library by query (scans titles and summaries).
-    action='update': Modifies a record by article_id (e.g., refreshing a summary).
-    action='delete': Permanently removes a record by article_id.
-    """
-    logger.info(f"Tool Call: manage_local_library(action='{action}', query='{query}', id={article_id}, updates={updates}, articles_count={len(articles) if articles else 0})")
-
-    if action == "list_all":
-        library = _load_library()
-        return {"status": f"Found {len(library)} articles.", "articles": library}
-
-    if action == "search":
-        if not query:
-            return {"status": "query is required for 'search' action.", "articles": []}
-        library = _load_library()
-        q = query.lower()
-        matches = [
-            a for a in library
-            if q in a.get("title", "").lower() or q in a.get("ai_summary", "").lower()
-        ]
-        return {"status": f"Found {len(matches)} matches for '{query}'.", "articles": matches}
-
-    if action == "check_duplicates":
-        if not articles:
-            return {"status": "No articles provided.", "articles": []}
-        library = _load_library()
-        saved_urls = {a["url"] for a in library}
-        novel = [a for a in articles if a.get("url") not in saved_urls]
-        return {"status": f"{len(novel)} novel articles found.", "articles": novel}
-
-    if action == "save_new":
-        if not articles:
-            return {"status": "0 articles provided. Nothing saved."}
-        library = _load_library()
-        saved_urls = {a["url"] for a in library}
-        new_articles = []
-        for a in articles:
-            if a.get("url") and a["url"] not in saved_urls:
-                new_articles.append({
-                    "id": str(uuid.uuid4()),
-                    "title": a.get("title", ""),
-                    "url": a["url"],
-                    "points": a.get("points", 0),
-                    "ai_summary": a.get("ai_summary", ""),
-                    "saved_at": datetime.now(timezone.utc).isoformat(),
-                })
-                saved_urls.add(a["url"])
-        skipped = len(articles) - len(new_articles)
-        _save_library(library + new_articles)
-        return {"status": f"{skipped} duplicates skipped. {len(new_articles)} new articles saved."}
-
-    if action == "update":
-        if not article_id or not updates:
-            return {"status": "article_id and updates are required for 'update' action."}
-        library = _load_library()
-        found = False
-        for a in library:
-            if a["id"] == article_id:
-                a.update(updates)
-                found = True
-                break
-        if found:
-            _save_library(library)
-            return {"status": f"Article {article_id} updated successfully."}
-        return {"status": f"Article {article_id} not found."}
-
-    if action == "delete":
-        if not article_id:
-            return {"status": "article_id is required for 'delete' action."}
-        library = _load_library()
-        initial_len = len(library)
-        library = [a for a in library if a["id"] != article_id]
-        if len(library) < initial_len:
-            _save_library(library)
-            return {"status": f"Article {article_id} deleted successfully."}
-        return {"status": f"Article {article_id} not found."}
-
-    return {"status": f"Unknown action '{action}'. Use 'check_duplicates', 'save_new', 'list_all', 'update', or 'delete'."}
-
 
 @mcp.tool()
 async def fetch_brand_sentiment(
@@ -359,21 +224,51 @@ async def fetch_brand_sentiment(
 
         if do_twitter:
             try:
-                raw = list(DDGS().text(f'site:x.com "{brand}"', timelimit=timeframe, max_results=20))
-                texts = [r.get("title", "") + " " + r.get("body", "") for r in raw]
-                sentiment = _score_sentiment(texts)
-                top = [{"title": r.get("title", ""), "url": r.get("href", ""), "score": 0} for r in raw[:5]]
-                results.append({"brand": brand, "platform": "twitter", "total_posts": len(raw), **sentiment, "top_posts": top})
+                api_posts = await _fetch_twitter_api(brand, timeframe, limit=50)
+                if api_posts:
+                    # API path — structured data, reliable
+                    texts = [p["title"] for p in api_posts]
+                    sentiment = _score_sentiment(texts)
+                    top = [{"title": p["title"], "url": p["url"], "score": p["score"]} for p in api_posts[:5]]
+                    results.append({
+                        "brand": brand, "platform": "twitter",
+                        "source": "twitter_api_v2",
+                        "total_posts": len(api_posts),
+                        **sentiment, "top_posts": top,
+                    })
+                else:
+                    # DDGS fallback — use same brand expression to avoid ambiguous short names
+                    ddgs_brand = _TWITTER_BRAND_QUERY.get(brand.lower(), f'"{brand}"').split(" OR ")[0].strip('"')
+                    raw = list(DDGS().text(f'site:x.com "{ddgs_brand}"', timelimit=timeframe, region="in-en", max_results=20))
+                    relevant = [r for r in raw if "/status/" in r.get("href", "") and ddgs_brand.lower() in (r.get("title", "") + r.get("body", "")).lower()]
+                    if len(relevant) < 3:
+                        results.append({"brand": brand, "platform": "twitter", "status": "insufficient_data: set TWITTER_BEARER_TOKEN for reliable data"})
+                    else:
+                        texts = [r.get("title", "") + " " + r.get("body", "") for r in relevant]
+                        sentiment = _score_sentiment(texts)
+                        top = [{"title": r.get("title", ""), "url": r.get("href", ""), "score": 0} for r in relevant[:5]]
+                        results.append({
+                            "brand": brand, "platform": "twitter",
+                            "source": "ddgs_fallback",
+                            "total_posts": len(relevant),
+                            **sentiment, "top_posts": top,
+                        })
             except Exception as e:
                 results.append({"brand": brand, "platform": "twitter", "status": f"unavailable: {e}"})
 
         if do_linkedin:
             try:
-                raw = list(DDGS().text(f'site:linkedin.com "{brand}"', timelimit=timeframe, max_results=20))
-                texts = [r.get("title", "") + " " + r.get("body", "") for r in raw]
-                sentiment = _score_sentiment(texts)
-                top = [{"title": r.get("title", ""), "url": r.get("href", ""), "score": 0} for r in raw[:5]]
-                results.append({"brand": brand, "platform": "linkedin", "total_posts": len(raw), **sentiment, "top_posts": top})
+                li_brand = _TWITTER_BRAND_QUERY.get(brand.lower(), f'"{brand}"').split(" OR ")[0].strip('"')
+                # site:linkedin.com/posts returns actual posts; bare site:linkedin.com returns company pages/articles
+                raw = list(DDGS().text(f'site:linkedin.com/posts "{li_brand}"', timelimit=timeframe, region="in-en", max_results=20))
+                relevant = [r for r in raw if "/posts/" in r.get("href", "")]
+                if len(relevant) < 3:
+                    results.append({"brand": brand, "platform": "linkedin", "status": "insufficient_data: fewer than 3 indexed posts found"})
+                else:
+                    texts = [r.get("title", "") + " " + r.get("body", "") for r in relevant]
+                    sentiment = _score_sentiment(texts)
+                    top = [{"title": r.get("title", ""), "url": r.get("href", ""), "score": 0} for r in relevant[:5]]
+                    results.append({"brand": brand, "platform": "linkedin", "total_posts": len(relevant), **sentiment, "top_posts": top})
             except Exception as e:
                 results.append({"brand": brand, "platform": "linkedin", "status": f"unavailable: {e}"})
 
@@ -458,20 +353,48 @@ def fetch_search_presence(
     domain_map = {b.lower(): _BRAND_DOMAINS.get(b.lower(), b.lower().replace(" ", "") + ".in") for b in brands}
     results = []
 
+    def _domain_match(domain: str, href: str) -> bool:
+        return domain in href and (
+            href.startswith(f"https://{domain}")
+            or href.startswith(f"http://{domain}")
+            or f".{domain}" in href
+            or f"/{domain}" in href
+        )
+
     for keyword in keywords:
         try:
-            hits = list(DDGS().text(keyword, max_results=10))
+            # DDGS backend rotation causes per-call rank drift.
+            # Strategy: 3 independent queries, track best rank + how many runs found each brand.
+            # Report best_rank (min across runs) + presence_confidence (X/3 runs found).
+            # present = found in ≥2 of 3 runs within top 10.
+            brand_best_rank: dict[str, int | None] = {b: None for b in brands}
+            brand_found_runs: dict[str, int] = {b: 0 for b in brands}
+            brand_url: dict[str, str | None] = {b: None for b in brands}
+
+            for _ in range(3):
+                hits = list(DDGS().text(keyword, region="in-en", max_results=10))
+                for brand in brands:
+                    domain = domain_map.get(brand.lower(), "")
+                    for i, h in enumerate(hits, start=1):
+                        href = h.get("href", "")
+                        if _domain_match(domain, href):
+                            brand_found_runs[brand] += 1
+                            if brand_best_rank[brand] is None or i < brand_best_rank[brand]:
+                                brand_best_rank[brand] = i
+                                brand_url[brand] = href
+                            break
+
             for brand in brands:
-                domain = domain_map.get(brand.lower(), "")
-                rank = None
-                url = None
-                for i, h in enumerate(hits, start=1):
-                    href = h.get("href", "")
-                    if domain in href and (f".{domain}" in href or f"/{domain}" in href or href.startswith(f"https://{domain}") or href.startswith(f"http://{domain}")):
-                        rank = i
-                        url = h["href"]
-                        break
-                results.append({"keyword": keyword, "brand": brand, "rank": rank, "present": rank is not None, "url": url})
+                best = brand_best_rank[brand]
+                found = brand_found_runs[brand]
+                results.append({
+                    "keyword": keyword,
+                    "brand": brand,
+                    "rank": best,
+                    "present": found >= 2 and best is not None and best <= 10,
+                    "url": brand_url[brand],
+                    "presence_confidence": f"{found}/3",
+                })
         except Exception as e:
             for brand in brands:
                 results.append({"keyword": keyword, "brand": brand, "rank": None, "present": False, "url": None, "status": f"error: {e}"})
