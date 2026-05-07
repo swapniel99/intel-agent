@@ -330,6 +330,37 @@ def fetch_content_trends(
         return [{"status": f"fetch_content_trends error: {err}"}]
 
 
+# Order: duckduckgo (stable) → mojeek → yahoo (Bing-powered, good India coverage) → brave (rate-limits fast) → yandex (weak India)
+_DDGS_BACKEND_CHAIN = ["duckduckgo", "mojeek", "yahoo", "brave", "yandex"]
+
+
+def _ddgs_text_with_fallback(query: str, **kwargs) -> tuple[list[dict], str]:
+    """Try backends in order; return (hits, backend_used).
+
+    DDGS silently falls back to 'auto' for unknown backends instead of raising,
+    so we validate against the known-available set.
+    """
+    last_err = None
+    for backend in _DDGS_BACKEND_CHAIN:
+        try:
+            hits = list(DDGS().text(query, backend=backend, **kwargs))
+            if hits:
+                return hits, backend
+        except Exception as e:
+            last_err = e
+            logger.warning(f"DDGS backend '{backend}' failed: {e}")
+    # All specific backends exhausted — last resort: auto
+    try:
+        hits = list(DDGS().text(query, **kwargs))
+        if hits:
+            return hits, "auto"
+    except Exception as e:
+        last_err = e
+    if last_err:
+        raise last_err
+    return [], "none"
+
+
 @mcp.tool()
 def fetch_search_presence(
     brands: list[str],
@@ -340,10 +371,12 @@ def fetch_search_presence(
     brands: e.g. ["PharmEasy", "1mg", "Apollo", "HMS"]
     keywords: e.g. ["buy medicine online", "online pharmacy india", "order medicines"]
 
-    Returns: [{keyword, brand, rank, present, url, presence_confidence}]
+    Returns: [{keyword, brand, rank, present, url, title, snippet, presence_confidence, source_backend, top_results}]
     rank: 1-indexed best position across 3 DDGS runs; null if not found.
     present: True only if found in ≥2/3 runs within top 10.
     presence_confidence: "X/3" — how many runs detected the brand.
+    title/snippet: page title and excerpt from the matched result for verification.
+    top_results: top-5 organic results from first run [{rank, title, url, snippet}] for full context.
     Use keywords specific to India e.g. "buy medicines online india" not generic US terms.
     """
     logger.info(f"Tool Call: fetch_search_presence(brands={brands}, keywords={keywords})")
@@ -368,9 +401,19 @@ def fetch_search_presence(
             brand_best_rank: dict[str, int | None] = {b: None for b in brands}
             brand_found_runs: dict[str, int] = {b: 0 for b in brands}
             brand_url: dict[str, str | None] = {b: None for b in brands}
+            brand_title: dict[str, str | None] = {b: None for b in brands}
+            brand_snippet: dict[str, str | None] = {b: None for b in brands}
+            top_results_snapshot: list[dict] = []
+            source_backend = "unknown"
 
-            for _ in range(3):
-                hits = list(DDGS().text(keyword, region="in-en", max_results=10))
+            for run_i in range(3):
+                hits, backend_used = _ddgs_text_with_fallback(keyword, region="in-en", max_results=10)
+                if run_i == 0:
+                    source_backend = backend_used
+                    top_results_snapshot = [
+                        {"rank": i, "title": h.get("title", ""), "url": h.get("href", ""), "snippet": h.get("body", "")[:120]}
+                        for i, h in enumerate(hits[:5], start=1)
+                    ]
                 for brand in brands:
                     domain = domain_map.get(brand.lower(), "")
                     for i, h in enumerate(hits, start=1):
@@ -380,6 +423,8 @@ def fetch_search_presence(
                             if brand_best_rank[brand] is None or i < brand_best_rank[brand]:
                                 brand_best_rank[brand] = i
                                 brand_url[brand] = href
+                                brand_title[brand] = h.get("title", "")
+                                brand_snippet[brand] = h.get("body", "")[:120]
                             break
 
             for brand in brands:
@@ -391,7 +436,11 @@ def fetch_search_presence(
                     "rank": best,
                     "present": found >= 2 and best is not None and best <= 10,
                     "url": brand_url[brand],
+                    "title": brand_title[brand],
+                    "snippet": brand_snippet[brand],
                     "presence_confidence": f"{found}/3",
+                    "source_backend": source_backend,
+                    "top_results": top_results_snapshot,
                 })
         except Exception as e:
             for brand in brands:
