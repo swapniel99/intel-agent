@@ -47,20 +47,22 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 
 ```bash
 # Backend — one-time setup (uses uv, not pip directly)
-uv sync                   # installs fastmcp, httpx, prefab-ui, uvicorn from uv.lock
+uv sync --all-groups       # installs fastmcp, httpx, prefab-ui, uvicorn + dev deps (pytest)
 
 # Backend — run server
 ./.venv/bin/python main.py            # http://localhost:8000 (streamable-http transport)
 
-# Backend — verify server connectivity and logic
-pytest test_mcp_server.py  # comprehensive integration test suite for tools and routes
+# Backend — run all tests (uses TestClient internally; no live server required)
+uv run pytest
 
-# Backend — run tests (when implemented)
-pytest
+# Backend — run single test
+uv run pytest test_mcp_server.py::test_function_name -v
 
 # Frontend — no build step
 # Load unpacked extension from chrome://extensions/ → "Load unpacked" → select extension/
 ```
+
+`asyncio_mode = "auto"` set in `pyproject.toml` — all async tests run without `@pytest.mark.asyncio`.
 
 ## CI/CD
 
@@ -172,14 +174,10 @@ intel-agent/
 
 ## Testing & Verification
 
-**Manual Server Test (Streamable-HTTP):**
+**Unit Tests (no live server needed):**
 ```bash
-# Terminal 1: Start backend
-./.venv/bin/python main.py
-
-# Terminal 2: Run connectivity test
-./.venv/bin/python test_mcp_server.py
-# Output: lists all 3 tools (fetch_tech_news, manage_local_library, render_dashboard)
+uv run pytest test_mcp_server.py -v
+# Tests use TestClient(mcp.http_app(transport="streamable-http")) — no server process required
 ```
 
 **Integration Test (curl):**
