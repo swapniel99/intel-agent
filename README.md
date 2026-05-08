@@ -10,6 +10,10 @@ IntelAgent bridges the gap between high-level AI reasoning and local system capa
 
 [![Watch the video](https://img.shields.io/badge/YouTube-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/6RK0Bzaukyo)
 
+<p align="center">
+  <img src="extension/icons/screenshot.png" width="800" alt="IntelAgent Dashboard Preview">
+</p>
+
 ---
 
 ## ✨ Key Features
