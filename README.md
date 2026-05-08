@@ -16,9 +16,10 @@ IntelAgent bridges the gap between high-level AI reasoning and local system capa
 
 - **🌐 Multi-Source Research:** Seamlessly fetches from **Hacker News**, **Dev.to**, and **Reddit**, combined with broad factual grounding via **Google Search** (Dynamic Grounding).
 - **📚 Local Memory:** Persistent JSON library (`saved_articles.json`) for article deduplication, full-text search, and historical research tracking.
-- **📊 Dynamic Dashboards:** Automatically generates rich UI dashboards using **Prefab UI** (Bar, Pie, Line, Area, Radar, Radial).
+- **📊 Dynamic Dashboards:** Automatically generates rich UI dashboards using **Prefab UI** (Bar, Line, Pie, Radar charts + metric cards + tables).
 - **🧩 MCP Native:** Built on the **Model Context Protocol (FastMCP)** for robust, standardized communication between the LLM and local tools.
 - **⚡ Persistent UI:** Runs in a dedicated Chrome Extension window (Manifest V3) with a resizable dashboard + chat layout.
+- **🤖 Multi-Provider:** Supports **Gemini** (with thinking levels) and **Ollama** (with reasoning effort) as interchangeable AI backends.
 
 ---
 
@@ -27,9 +28,12 @@ IntelAgent bridges the gap between high-level AI reasoning and local system capa
 ```mermaid
 graph TD
     User([User Prompt]) --> Extension[Chrome Extension Window]
-    Extension --> Gemini
-    Gemini -- Tool Discovery --> FastMCP[FastMCP Server :8000]
-    FastMCP -- Tool Definition --> Gemini
+    Extension --> Provider{AI Provider}
+    Provider -- Gemini --> GeminiAPI[Gemini API]
+    Provider -- Ollama --> OllamaAPI[Ollama :11434]
+    GeminiAPI -- Tool Discovery --> FastMCP[FastMCP Server :8000]
+    OllamaAPI -- Tool Discovery --> FastMCP
+    FastMCP -- Tool Definition --> Provider
 
     subgraph "Local Tools (Python)"
         FastMCP --> T1[fetch_tech_news]
@@ -40,8 +44,8 @@ graph TD
         T3 --> Cache[_LAST_DASHBOARD_HTML]
     end
 
-    Gemini -- Dynamic Grounding --> Google[Google Search]
-    Gemini -- Tool Call --> FastMCP
+    GeminiAPI -- Dynamic Grounding --> Google[Google Search]
+    Provider -- Tool Call --> FastMCP
     FastMCP -- status: dashboard_ready --> Extension
     Extension -- GET /dashboard?theme=... --> Cache
     Cache -- HTML Page --> Dashboard{{iframe Dashboard}}
@@ -72,7 +76,9 @@ uv sync
 2. Enable **Developer mode** (top right).
 3. Click **Load unpacked** and select the `extension` folder in this repository.
 4. Click the IntelAgent icon in your toolbar to open the extension window.
-5. Click the gear icon (⚙️) to enter your **Gemini API Key** and MCP server URL.
+5. Click the gear icon (⚙️) to configure your AI provider:
+   - **Gemini:** Enter your API key and select a thinking level (optional).
+   - **Ollama:** Set the base URL (`http://localhost:11434`) and model name. Set `OLLAMA_ORIGINS="*"` env var before starting Ollama to allow extension access.
 
 ---
 
@@ -82,13 +88,13 @@ uv sync
 |---|---|---|
 | `fetch_tech_news` | Retrieves trending tech discussions from multiple sources. | Hacker News, Dev.to, Reddit |
 | `manage_local_library` | Full CRUD on research: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. | `saved_articles.json` |
-| `render_dashboard` | Compiles research into a rich HTML dashboard. Supports 6 chart types, metrics, and tables. | Prefab UI |
-| **Google Search** | (Native) Provides real-time factual grounding for general queries. | Google Search Index |
+| `render_dashboard` | Compiles research into a rich HTML dashboard. Supports 4 chart types, metrics, and tables. | Prefab UI |
+| **Google Search** | (Native, Gemini only) Provides real-time factual grounding for general queries. | Google Search Index |
 
 ### Dashboard Features
-- **Multi-Layout:** `auto`, `kpi_grid`, `chart_focus`, `table_report`, and `split`.
+- **Layouts:** `auto` (adaptive) and `split` (chart + content side-by-side).
 - **Rich Components:**
-  - **Charts:** Bar, Line, Area, Pie, Radar, Radial.
+  - **Charts:** Bar, Line, Pie, Radar.
   - **KPIs:** Metric cards with trend indicators and sentiment.
   - **Data Tables:** Searchable and paginated tables.
   - **Article Cards:** Curated news feed with AI summaries and badges.
@@ -113,9 +119,9 @@ uv sync
 ## 🛠️ Tech Stack
 
 - **Backend:** Python 3.14, [FastMCP](https://github.com/jlowin/fastmcp), FastAPI, Uvicorn, Prefab-UI.
-- **Frontend:** JavaScript (ES6+), Manifest V3, Gemini SDK.
+- **Frontend:** JavaScript (ES6+), Manifest V3, Gemini SDK (ES module bundle).
+- **AI Providers:** Google Gemini (with thinking levels + Google Search grounding) or Ollama (OpenAI-compat, with reasoning effort).
 - **Storage:** Local JSON filesystem.
-- **AI:** Google Gemini with Dynamic Grounding.
 
 ---
 
