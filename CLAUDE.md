@@ -31,7 +31,7 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 |---|---|---|
 | `fetch_tech_news` | Internet | Fetches from HN (Algolia), Dev.to, or Reddit; `source` param: `"hn"` | `"dev"` | `"reddit"` | `"all"` (default). Returns `[{title,url,points,source}]`. Falls back to `saved_articles.json` on failure. |
 | `manage_local_library` | File CRUD | 6 actions on `saved_articles.json`: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. Deduplicates by URL. |
-| `render_dashboard` | UI | Compiles research into a rich HTML dashboard. Supports 6 chart types (Bar, Line, Area, Pie, Radar, Radial), metrics, tables, and multiple layouts (`auto`, `kpi_grid`, `chart_focus`, `table_report`, `split`). |
+| `render_dashboard` | UI | Compiles research into a rich HTML dashboard. Supports 4 chart types (Bar, Line, Pie, Radar), metrics, tables, and multiple layouts (`auto`, `kpi_grid`, `chart_focus`, `table_report`, `split`). |
 
 `search_internet` (DuckDuckGo via `ddgs`) removed. Replaced by Gemini native `googleSearch` tool wired in `index.js`.
 

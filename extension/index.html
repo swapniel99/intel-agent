@@ -188,6 +188,50 @@
 
     #key-status { font-size: 12px; color: var(--ok); min-height: 18px; margin-top: 4px; }
 
+    #settings-panel select {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      appearance: none;
+    }
+
+    #settings-panel select:focus { border-color: var(--accent); }
+
+    .setting-group { display: flex; flex-direction: column; }
+
+    #ollama-settings, #gemini-settings { display: flex; flex-direction: column; gap: 16px; }
+
+    #preset-btns {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 3px 8px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .preset-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      background: var(--bg-input);
+    }
+
     /* ── Main content ── */
     #main-view {
       display: flex;
@@ -445,8 +489,50 @@
 
   <div id="settings-panel">
     <div class="setting-group">
-      <label for="api-key-input">Gemini API Key</label>
-      <input id="api-key-input" type="password" placeholder="AIza…" />
+      <label for="provider-select">LLM Provider</label>
+      <select id="provider-select">
+        <option value="gemini">Gemini (Google AI)</option>
+        <option value="ollama">Ollama (local)</option>
+      </select>
+    </div>
+    <div id="gemini-settings">
+      <div class="setting-group">
+        <label for="api-key-input">Gemini API Key</label>
+        <input id="api-key-input" type="password" placeholder="AIza…" />
+      </div>
+      <div class="setting-group">
+        <label for="gemini-model-input">Model</label>
+        <input id="gemini-model-input" type="text" value="gemini-3-flash-preview" />
+      </div>
+      <div class="setting-group">
+        <label for="gemini-thinking-select">Thinking level</label>
+        <select id="gemini-thinking-select">
+          <option value="">Off</option>
+          <option value="MINIMAL">Minimal</option>
+          <option value="LOW">Low</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="HIGH">High</option>
+        </select>
+      </div>
+    </div>
+    <div id="ollama-settings" style="display:none;">
+      <div class="setting-group">
+        <label for="ollama-url-input">Ollama URL</label>
+        <input id="ollama-url-input" type="text" value="http://localhost:11434" />
+      </div>
+      <div class="setting-group">
+        <label for="ollama-model-input">Model</label>
+        <input id="ollama-model-input" type="text" value="gemma4:e2b" />
+      </div>
+      <div class="setting-group">
+        <label for="ollama-thinking-select">Reasoning effort</label>
+        <select id="ollama-thinking-select">
+          <option value="">Off</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
     </div>
     <div class="setting-group">
       <label for="mcp-url-input">MCP Server URL</label>
@@ -480,6 +566,13 @@
       <div id="chat-header">Chat History</div>
       <div id="chat-history"></div>
       <div id="prompt-section">
+        <div id="preset-btns">
+          <button class="preset-btn" id="preset-headlines">Tech Headlines</button>
+          <button class="preset-btn" id="preset-ai">AI &amp; LLMs</button>
+          <button class="preset-btn" id="preset-library">Library Overview</button>
+          <button class="preset-btn" id="preset-digest">Weekly Digest</button>
+          <button class="preset-btn" id="preset-compare">Compare Topics</button>
+        </div>
         <div id="prompt-container">
           <textarea
             id="prompt-input"
