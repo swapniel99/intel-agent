@@ -13,13 +13,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Frontend (Chrome Extension — Manifest V3)
 - **Standalone Window UI** (`extension/index.html` / `index.js`) — orchestrator + primary UI in dedicated window (not side panel)
 - **Options Page** (`extension/options.html` / `options.js`) for one-time Gemini API key setup
-- `index.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
+- `index.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop with active provider, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
+- **Provider abstraction** — `GeminiProvider` (`providers/gemini-provider.js`) and `OllamaProvider` (`providers/ollama-provider.js`) implement identical `generateContent()` interface. `index.js` instantiates one based on settings; loop code is provider-agnostic.
 - **Layout:** Resizable side-by-side panels — left (dynamic %): dashboard iframe, right (dynamic %): chat history + prompt input. Default is roughly 70/30 split.
 - Dashboard rendering: final tool result (`render_dashboard`) → backend populates `_LAST_DASHBOARD_HTML` → left panel sets `iframe.src` to `http://localhost:8000/dashboard?theme=...`
 - `background.js` opens extension window on icon click
 - `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
 - Gemini API key + MCP server URL stored in `chrome.storage.local`. Configurable via inline settings panel (gear icon in main UI) or `options.html` (manifest `options_page`)
-- Model: `gemini-3.1-flash-lite-preview` (configured in `index.js`)
+- **Thinking/reasoning:** Gemini supports `thinkingLevel` (`MINIMAL`|`LOW`|`MEDIUM`|`HIGH`|off); Ollama supports `reasoning_effort` (`low`|`medium`|`high`|off). Both configurable via settings UI.
+- Model: `gemini-3-flash-preview` default (configured in `index.js`); Ollama default `gemma4:e2b`
 - No package manager / build step — plain ES modules
 - Theme: dark/light mode toggle in UI, applied to dashboard iframe via query parameter
 
@@ -31,7 +33,7 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 |---|---|---|
 | `fetch_tech_news` | Internet | Fetches from HN (Algolia), Dev.to, or Reddit; `source` param: `"hn"` | `"dev"` | `"reddit"` | `"all"` (default). Returns `[{title,url,points,source}]`. Falls back to `saved_articles.json` on failure. |
 | `manage_local_library` | File CRUD | 6 actions on `saved_articles.json`: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. Deduplicates by URL. |
-| `render_dashboard` | UI | Compiles research into a rich HTML dashboard. Supports 6 chart types (Bar, Line, Area, Pie, Radar, Radial), metrics, tables, and multiple layouts (`auto`, `kpi_grid`, `chart_focus`, `table_report`, `split`). |
+| `render_dashboard` | UI | Compiles research into a rich HTML dashboard. Supports 4 chart types (Bar, Line, Pie, Radar), metrics, tables, and layouts (`auto`, `split`). Requires at least one content field (cards/metrics/chart/table) — server-side guard returns error if all absent. |
 
 `search_internet` (DuckDuckGo via `ddgs`) removed. Replaced by Gemini native `googleSearch` tool wired in `index.js`.
 
@@ -107,11 +109,14 @@ intel-agent/
 └── extension/
     ├── manifest.json          # MV3 — permissions: storage; host: localhost:8000, googleapis.com, cdn.jsdelivr.net
     ├── index.html             # Main UI (resizable chat + dashboard panels)
-    ├── index.js               # Gemini agentic loop + MCP proxy + Google Search + dashboard injection
+    ├── index.js               # Agentic loop + MCP proxy + provider wiring + dashboard injection
     ├── background.js          # Service worker — opens window on icon click
     ├── options.html           # API key settings page
     ├── options.js             # Save/load Gemini API key to chrome.storage.local
     ├── genai.js               # Bundled @google/genai ES module
+    ├── providers/
+    │   ├── gemini-provider.js # Gemini generateContent wrapper (thinking support)
+    │   └── ollama-provider.js # Ollama OpenAI-compat wrapper (reasoning_effort support)
     └── icons/                 # Extension branding assets
 ```
 
@@ -131,15 +136,18 @@ intel-agent/
 - `render_dashboard`: `{"status": "dashboard_ready"}` dict (backend caches HTML)
 
 **Frontend (extension/index.js):**
-- Init: `mcpInitialize()` → `loadMcpTools()` → convert to Gemini `functionDeclarations` schema
+- Init: `mcpInitialize()` → `loadMcpTools()` → convert to `functionDeclarations` → `initProvider()`
+- Provider selection: `initProvider()` reads settings, constructs `GeminiProvider` or `OllamaProvider`; loop calls `provider.generateContent()` uniformly
 - Agentic loop: MAX_TURNS=12, forceFinish at turn 8 (constrains tools to `render_dashboard` only)
   - generateContent → detect toolCalls → callMcpTool() → functionResponse → repeat
   - Fallback: if no toolCalls + text response, render text-only dashboard
-  - System prompt enforces: always call `render_dashboard` when finished
+  - System prompt: plain-English flows (no tool names/call format — model discovers tools from MCP docstrings)
+  - System prompt rules: ALWAYS gather data before rendering; dashboard MUST include at least one content field; `summary` = 2-3 sentence prose only (never data)
 - Conversation history: tracked in-memory (full history), checkpoint stack for undo/clear without reload
 - Dashboard rendering: `render_dashboard` result triggers iframe reload with `?theme=...&t=...` (cache buster)
 - MCP session continuity: `mcp-session-id` header persisted; auto-recovery on session loss with retry logic + timeout
-- Gemini config: MCP `functionDeclarations` + native `googleSearch` tool registered together
+- Gemini config: MCP `functionDeclarations` + native `googleSearch` tool registered together (Gemini only)
+- OllamaProvider: converts Gemini-format history → OpenAI messages; calls `/v1/chat/completions`; returns Gemini-format parts so history stays uniform
 - Theme: dark/light toggle wired via `chrome.storage.local`, applied to extension UI and passed to dashboard iframe
 - UI Layout: dashboard panel (left) displays iframe; chat panel (right) shows conversation history + prompt input
 - Error state: if server unavailable, display "Server Disconnected" message (not silent failure)
@@ -208,6 +216,14 @@ curl -X POST http://localhost:8000/mcp \
 **CORS errors in Chrome Extension:**
 - CORS middleware is configured with `allow_origins=["*"]` in main.py
 - Verify `mcp-protocol-version` and `mcp-session-id` headers in requests
+
+**Ollama 403 Forbidden from Chrome Extension:**
+- Ollama blocks cross-origin requests by default
+- Fix: set `OLLAMA_ORIGINS="*"` before starting Ollama
+  ```bash
+  launchctl setenv OLLAMA_ORIGINS "*"   # macOS — then restart Ollama app
+  # or: OLLAMA_ORIGINS="*" ollama serve
+  ```
 
 **saved_articles.json doesn't exist:**
 - It's auto-created on first `manage_local_library("save_new")` call

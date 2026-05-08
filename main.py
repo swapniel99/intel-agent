@@ -4,6 +4,9 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import httpx
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
@@ -14,7 +17,7 @@ from starlette.responses import HTMLResponse
 from prefab_ui import PrefabApp
 from prefab_ui.components import Column, Muted
 
-_CHART_TYPES = {"bar", "line", "area", "pie", "radar", "radial"}
+_CHART_TYPES = {"bar", "line", "pie", "radar"}
 
 _LAST_DASHBOARD_HTML: str = ""
 
@@ -92,10 +95,13 @@ async def _fetch_reddit(query: str, limit: int) -> list[dict]:
 
 @mcp.tool()
 async def fetch_tech_news(query: str, limit: int = 10, source: str = "all") -> list[dict]:
-    """Fetch articles from multiple sources.
+    """Fetch articles from internet sources.
 
-    source: 'hn' (Hacker News), 'dev' (Dev.to), 'reddit', or 'all' (combines all sources).
-    Returns: [{title, url, points, source}]
+    query: search term (required). Use specific keywords, e.g. "rust async" or "LLM benchmarks".
+    limit: max total articles to return (default 10).
+    source: 'hn' (Hacker News), 'dev' (Dev.to), 'reddit', or 'all' (combines all — use by default).
+    Returns: [{title, url, points (int score/upvotes), source}]
+    On failure: returns cached local library articles with a {status} sentinel — do not retry.
     """
     logger.info(f"Tool Call: fetch_tech_news(query='{query}', limit={limit}, source='{source}')")
 
@@ -136,14 +142,14 @@ def manage_local_library(
 ) -> dict:
     """Read/write the local saved_articles.json library.
 
-    action='check_duplicates': Returns {status, articles} with novel articles not yet in library.
-        RECOMMENDED: Call this before 'save_new' to filter results.
-    action='save_new': Appends articles (deduped by URL) to the JSON ledger.
-        REQUIREMENT: Articles must include 'ai_summary' (1-sentence max).
-    action='list_all': Returns the entire archive for browsing.
-    action='search': Filters the library by query (scans titles and summaries).
-    action='update': Modifies a record by article_id (e.g., refreshing a summary).
-    action='delete': Permanently removes a record by article_id.
+    action='check_duplicates': Pass articles=[{title,url,...}]. Returns {status, articles} with only novel articles not yet saved.
+        ALWAYS call this before 'save_new' to filter out duplicates.
+    action='save_new': Pass articles=[{title, url, points, source, ai_summary}]. Appends deduped by URL.
+        Each article MUST include 'ai_summary' (1 sentence). Required fields: title, url.
+    action='list_all': Returns full archive. article_id in each result — use for update/delete.
+    action='search': Pass query=str. Filters library by title and summary text.
+    action='update': Pass article_id (from list_all/search) + updates={field: value}.
+    action='delete': Pass article_id (from list_all/search). Permanently removes record.
     """
     logger.info(f"Tool Call: manage_local_library(action='{action}', query='{query}', id={article_id}, updates={updates}, articles_count={len(articles) if articles else 0})")
 
@@ -253,6 +259,32 @@ def _normalize_chart(chart: dict) -> dict:
         if not c.get("series"):
             c["series"] = [{"dataKey": "value", "label": c.get("title") or "Value"}]
 
+    # Fix agent mangling dataKey and nameKey into one string: 'pct,nameKey:cat'
+    if c.get("dataKey") and "nameKey" not in c:
+        raw = str(c["dataKey"])
+        if "nameKey" in raw:
+            parts = raw.split(",nameKey:")
+            c["dataKey"] = parts[0].strip()
+            if len(parts) > 1 and parts[1].strip():
+                c["nameKey"] = parts[1].strip()
+
+    # Infer missing type from chart shape
+    if not c.get("type"):
+        if c.get("dataKey") or (c.get("data") and c.get("data") and len(c["data"][0]) <= 3):
+            c["type"] = "pie"
+        elif c.get("series"):
+            c["type"] = "bar"
+        else:
+            c["type"] = "bar"
+
+    # Auto-detect nameKey for pie/radial from first data row keys
+    if c.get("type") == "pie" and not c.get("nameKey") and c.get("data"):
+        dk = c.get("dataKey", "value")
+        for k in c["data"][0].keys():
+            if k != dk:
+                c["nameKey"] = k
+                break
+
     if c.get("series"):
         c["series"] = [
             {("dataKey" if k == "data_key" else k): v for k, v in s.items()}
@@ -274,17 +306,22 @@ def _build_chart_node(chart: dict) -> dict | None:
     if ctype not in _CHART_TYPES:
         return None
     type_map = {
-        "bar": "BarChart", "line": "LineChart", "area": "AreaChart",
-        "pie": "PieChart", "radar": "RadarChart", "radial": "RadialChart",
+        "bar": "BarChart", "line": "LineChart",
+        "pie": "PieChart", "radar": "RadarChart",
     }
     data = chart.get("data", [])
     series = chart.get("series", [])
 
     # Smart axis key detection
     x_axis = chart.get("xAxis") or chart.get("axisKey") or chart.get("x_axis") or chart.get("axis_key")
+    # For bar/line: nameKey means the categorical x-axis dimension
+    if not x_axis and ctype not in ("pie", "radar") and chart.get("nameKey"):
+        x_axis = chart["nameKey"]
     if not x_axis and data and isinstance(data[0], dict):
-        # Find first key that isn't in series dataKeys
+        explicit_data_key = chart.get("dataKey")
         series_keys = {s.get("dataKey") for s in series if s.get("dataKey")}
+        if explicit_data_key:
+            series_keys.add(explicit_data_key)
         for k in data[0].keys():
             if k not in series_keys:
                 x_axis = k
@@ -292,8 +329,12 @@ def _build_chart_node(chart: dict) -> dict | None:
     if not x_axis:
         x_axis = "label"
 
-    if data and not series and ctype not in ("pie", "radial"):
-        series = [{"dataKey": k, "label": k.capitalize()} for k in data[0] if k != x_axis]
+    if data and not series and ctype != "pie":
+        explicit_data_key = chart.get("dataKey")
+        if explicit_data_key:
+            series = [{"dataKey": explicit_data_key, "label": explicit_data_key.capitalize()}]
+        else:
+            series = [{"dataKey": k, "label": k.capitalize()} for k in data[0] if k != x_axis]
 
     node: dict = {"type": type_map[ctype], "data": data, "height": chart.get("height", 300)}
 
@@ -302,13 +343,13 @@ def _build_chart_node(chart: dict) -> dict | None:
         if prop in chart:
             node[prop] = chart[prop]
 
-    if ctype in ("pie", "radial"):
+    if ctype == "pie":
         node["dataKey"] = chart.get("dataKey") or (series[0]["dataKey"] if series else "value")
         node["nameKey"] = chart.get("nameKey") or x_axis
     elif ctype == "radar":
         node["series"] = series
         node["axisKey"] = x_axis
-    else:  # bar, line, area
+    else:  # bar, line
         node["series"] = series
         node["xAxis"] = x_axis
         if chart.get("stacked"):
@@ -332,29 +373,28 @@ def render_dashboard(
     PRO-ACTIVE VISUALIZATION: If you have numerical data, metrics, or comparisons, ALWAYS include a 'chart'.
 
     title: dashboard heading (required).
-    summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
+    summary: 2-3 sentence prose response ONLY. NEVER put data, lists, or markdown here. All gathered data MUST go into cards, metrics, chart, or table.
 
     cards: article/news cards. Use for feeds, search results, library views.
-        Each: {title, url, points, source, ai_summary: "1-sentence executive summary"}
+        Each: {title, url, points: int (upvote score), source: str, ai_summary: "1-sentence executive summary"}
 
     metrics: KPI cards. Use for numbers, comparisons, benchmarks.
-        Each: {label, value, delta?, trend?: "up|down|neutral", trendSentiment?: "positive|negative|neutral"}
+        Each: {label, value: str, delta?: str, trend?: "up|down|neutral", trendSentiment?: "positive|negative|neutral"}
         Example: {"label": "Stars", "value": "92K", "delta": "+12%", "trend": "up", "trendSentiment": "positive"}
 
-    chart: one chart.
-        SIMPLE (pie/bar/line/area):   {type, title?, labels: ["A","B"], values: [10,20]}
-        MULTIVARIATE (bar/line/area): {type, title?, data: [{"x":"A","val":10}], series: [{dataKey:"val", label:"Metric"}], xAxis:"x"}
-        PIE/RADIAL:                   {type, data: [{"cat":"X","pct":40}], dataKey:"pct", nameKey:"cat"}
-        RADAR:                        {type, data: [{"axis":"Speed","a":80,"b":70}], series:[{dataKey:"a"},{dataKey:"b"}], axisKey:"axis"}
+    chart: one chart. 'type' field is required in every chart.
+        BAR/LINE:  {type: "bar"|"line", title?, data: [{"x":"A","val":10}], series: [{dataKey:"val", label:"Metric"}], xAxis:"x"}
+        PIE:       {type: "pie", data: [{"cat":"X","pct":40}], dataKey:"pct", nameKey:"cat"}
+        RADAR:     {type: "radar", data: [{"axis":"Speed","a":80,"b":70}], series:[{dataKey:"a"},{dataKey:"b"}], axisKey:"axis"}
 
-    table: data table.
+    table: data table. columns[].key must match a key present in each rows[] dict.
         {columns: [{key, header, sortable?}], rows: [{...}], search?, paginated?, pageSize?}
 
     badges: header status badges.
         [{label, variant?: "default|outline|info|success|destructive|warning|secondary"}]
 
-    layout: "auto" (default) | "kpi_grid" | "chart_focus" | "table_report" | "split"
-        auto: cards→article feed, chart-only→chart_focus, table-only→table_report, else→kpi_grid
+    layout: "auto" (default) | "split"
+        auto: backend picks best layout based on content.
         split: chart left + metrics column right, side by side.
 
     Returns {status: "dashboard_ready"}.
@@ -365,6 +405,9 @@ def render_dashboard(
         f"cards={len(cards or [])}, metrics={len(metrics or [])}, "
         f"chart={bool(chart)}, table={bool(table)})"
     )
+
+    if cards is None and metrics is None and chart is None and table is None:
+        return {"status": "error: render_dashboard requires at least one of: cards, metrics, chart, or table. Gather data first, then render."}
 
     def _article_card(c: dict) -> dict:
         p = c.get("points", 0) or 0

@@ -1,10 +1,20 @@
 import { GoogleGenAI } from "./genai.js";
+import { GeminiProvider } from "./providers/gemini-provider.js";
+import { OllamaProvider } from "./providers/ollama-provider.js";
 
 let MCP_URL = "http://localhost:8000/mcp";
-const MODEL = "gemini-3.1-flash-lite-preview";
 const API_KEY_STORAGE = "gemini_api_key";
 const MCP_SERVER_URL_STORAGE = "mcp_server_url";
 const THEME_STORAGE = "theme";
+const LLM_PROVIDER_STORAGE = "llm_provider";
+const GEMINI_MODEL_STORAGE = "gemini_model";
+const OLLAMA_URL_STORAGE = "ollama_url";
+const OLLAMA_MODEL_STORAGE = "ollama_model";
+const OLLAMA_THINKING_STORAGE = "ollama_reasoning_effort";
+const GEMINI_THINKING_STORAGE = "gemini_thinking";
+const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
+const DEFAULT_OLLAMA_URL = "http://localhost:11434";
+const DEFAULT_OLLAMA_MODEL = "gemma4:e2b";
 
 const $dot = document.getElementById("server-dot");
 const $status = document.getElementById("status-bar");
@@ -28,11 +38,26 @@ const $chatPanel = document.getElementById("chat-panel");
 const $mainView = document.getElementById("main-view");
 const $undoBtn = document.getElementById("undo-btn");
 const $clearBtn = document.getElementById("clear-btn");
+const $providerSelect = document.getElementById("provider-select");
+const $geminiSettings = document.getElementById("gemini-settings");
+const $ollamaSettings = document.getElementById("ollama-settings");
+const $geminiModelInput = document.getElementById("gemini-model-input");
+const $ollamaUrlInput = document.getElementById("ollama-url-input");
+const $ollamaModelInput = document.getElementById("ollama-model-input");
+const $ollamaThinkingSelect = document.getElementById("ollama-thinking-select");
+const $geminiThinkingSelect = document.getElementById("gemini-thinking-select");
+const $presetHeadlines = document.getElementById("preset-headlines");
+const $presetAi = document.getElementById("preset-ai");
+const $presetLibrary = document.getElementById("preset-library");
+const $presetDigest = document.getElementById("preset-digest");
+const $presetCompare = document.getElementById("preset-compare");
 
 let mcpTools = [];
 let geminiApiKey = "";
 let mcpSessionId = null;
 let ai = null;
+let activeProvider = null;
+let currentProviderType = "gemini";
 let conversationHistory = [];
 let userPromptHistory = [];
 let conversationCheckpoints = [];
@@ -139,7 +164,30 @@ async function callMcpTool(name, args) {
   return content;
 }
 
-// ── Gemini helpers ────────────────────────────────────────────────────────────
+// ── Provider helpers ──────────────────────────────────────────────────────────
+
+function initProvider(type, { apiKey, geminiModel, geminiThinking, ollamaUrl, ollamaModel, ollamaThinking } = {}) {
+  currentProviderType = type;
+  if (type === "ollama") {
+    activeProvider = new OllamaProvider(
+      ollamaUrl || DEFAULT_OLLAMA_URL,
+      ollamaModel || DEFAULT_OLLAMA_MODEL,
+      ollamaThinking || ""
+    );
+  } else {
+    if (apiKey) {
+      ai = new GoogleGenAI({ apiKey });
+      activeProvider = new GeminiProvider(ai, geminiModel || DEFAULT_GEMINI_MODEL, geminiThinking || null);
+    } else {
+      activeProvider = null;
+    }
+  }
+}
+
+function isProviderReady() {
+  if (currentProviderType === "ollama") return activeProvider !== null;
+  return !!geminiApiKey && activeProvider !== null;
+}
 
 function mcpToolsToFunctionDeclarations(tools) {
   return tools.map(t => ({
@@ -171,7 +219,7 @@ async function runAgent(userPrompt) {
   const userTurn = { role: "user", parts: [{ text: userPrompt }] };
   conversationHistory.push(userTurn);
   const contents = conversationHistory;
-  console.log(`[Agent Init] After push, history length: ${contents.length}, user turns: ${contents.filter(t => t.role === "user").length}`);
+  console.log(`[Agent Init] history length: ${contents.length}`);
 
   const now = new Date().toLocaleString();
   const systemInstruction = `You are IntelAgent, an AI research assistant.
@@ -181,71 +229,48 @@ Pick tools based on the user's intent.
 
 Intent classification:
 - HYBRID_RESEARCH: latest info + saved knowledge.
-  → manage_local_library(search) → fetch_tech_news(source='all') OR Google Search → dedupe & summarize → MERGE all results → manage_local_library(save_new) → render_dashboard(cards=[...])
+  → search local library → fetch internet sources OR web search → dedupe & summarize → merge results → save new articles → render dashboard
 - ARTICLE_CURATION: list/feed/digest of new articles.
-  → fetch_tech_news(source='all') → dedupe & summarize → manage_local_library(save_new) → render_dashboard(cards=[...])
+  → fetch internet sources → dedupe & summarize → save new articles → render dashboard
 - LIBRARY_MANAGEMENT: browse, search, or clean local collection.
-  → render_dashboard(cards=[...])
-- METRICS_ANALYSIS: KPIs, comparisons, benchmarks, market data, structured data reports.
-  → gather data (Google Search / fetch_tech_news) → identify metrics, trends, rankings → render_dashboard(metrics=[...], chart=..., layout="auto")
-- TREND_ANALYSIS: charts + data visualization with metrics.
-  → gather data → identify quantitative metrics → render_dashboard(chart=..., metrics=[...], layout="auto")
+  → read local library → render dashboard
+- DATA_ANALYSIS: KPIs, comparisons, benchmarks, trends, rankings, market data, any numerical output.
+  → gather data (web search / internet fetch) → identify metrics → render dashboard with chart + metrics
 
 Rules (CRITICAL):
-- ALWAYS call render_dashboard when finished. It is the only output surface.
-- PRO-ACTIVELY USE CHARTS: If you are dealing with numerical data, comparisons, or time-series, ALWAYS include a suitable chart in render_dashboard.
+- ALWAYS render the dashboard when finished. It is the only output surface.
+- ALWAYS gather data using tools BEFORE rendering. Never render from training knowledge alone.
+- Dashboard MUST include at least one of: cards, metrics, chart, or table. summary-only renders are FORBIDDEN.
+- PRO-ACTIVELY USE CHARTS: If you have numerical data, comparisons, or time-series, ALWAYS include a chart.
 - Do NOT emit text outside of tool calls.
-- summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
+- summary: 2-3 sentence prose ONLY. NEVER put data, lists, or markdown in summary. All gathered data MUST go into cards, metrics, chart, or table.
 - Use cards for article feeds. Use metrics for KPI numbers. Use chart for visualizations. Use table for comparisons.
-- layout="auto" always works — backend picks the best layout. Only set layout explicitly for "split".
+- layout="auto" always works. Only set layout="split" for side-by-side chart + metrics.
 `;
 
   const MAX_TURNS = 12;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const forceFinish = turn >= 8;
-    console.log(`[Turn ${turn + 1}] Calling Gemini${forceFinish ? " (FORCE FINISH)" : ""}…`);
-    const response = await ai.models.generateContent({
-      model: MODEL,
+    console.log(`[Turn ${turn + 1}/${currentProviderType}]${forceFinish ? " FORCE FINISH" : ""}`);
+
+    const { rawModelParts, toolCalls, textParts } = await activeProvider.generateContent(
       contents,
-      config: {
-        systemInstruction,
-        tools: [
-          { functionDeclarations: functionDeclarations.length ? functionDeclarations : [] },
-          ...(forceFinish ? [] : [{ googleSearch: {} }]),
-        ],
-        toolConfig: {
-          functionCallingConfig: forceFinish
-            ? { mode: "ANY", allowedFunctionNames: ["render_dashboard"] }
-            : { mode: "AUTO" },
-          ...(!forceFinish && {
-            googleSearchRetrieval: {
-              dynamicRetrievalConfig: { mode: "DYNAMIC", dynamicThreshold: 0.3 },
-            },
-            includeServerSideToolInvocations: true,
-          }),
-        },
-        generationConfig: { temperature: 0.2 },
-      },
-    });
+      functionDeclarations,
+      systemInstruction,
+      forceFinish
+    );
 
-    const candidate = response.candidates?.[0];
-    if (!candidate) throw new Error("No candidates in Gemini response");
-
-    const parts = candidate.content?.parts || [];
-    contents.push({ role: "model", parts });
-
-    const toolCalls = response.functionCalls;
+    contents.push({ role: "model", parts: rawModelParts });
 
     if (!toolCalls || toolCalls.length === 0) {
-      const textResponse = parts.map(p => p.text || "").join("\n").trim();
-      console.log(`[Turn ${turn + 1}] No tool calls. Text response: "${textResponse.slice(0, 100)}…"`);
-      if (textResponse) {
+      console.log(`[Turn ${turn + 1}] No tool calls. Text: "${textParts.slice(0, 100)}…"`);
+      if (textParts) {
         setStatus("Rendering fallback…");
         try {
           await callMcpTool("render_dashboard", {
             title: "Research Result",
-            summary: textResponse
+            summary: textParts
           });
           renderDashboard();
           setStatus("Done.", "success");
@@ -334,7 +359,7 @@ function setServerStatus(online) {
       ? "Server connected. Enter a prompt."
       : "Server offline — run: python main.py"
   );
-  $runBtn.disabled = !online || !geminiApiKey;
+  $runBtn.disabled = !online || !isProviderReady();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -349,18 +374,40 @@ async function checkServer() {
   }
 }
 
-function initGemini(apiKey) {
-  ai = new GoogleGenAI({ apiKey });
-}
-
 function loadSettings() {
-  chrome.storage.local.get([API_KEY_STORAGE, MCP_SERVER_URL_STORAGE], result => {
-    geminiApiKey = result[API_KEY_STORAGE] || "";
-    if (geminiApiKey) {
-      initGemini(geminiApiKey);
-      $apiKeyInput.value = "••••••••••••••••";
+  chrome.storage.local.get([
+    API_KEY_STORAGE, MCP_SERVER_URL_STORAGE,
+    LLM_PROVIDER_STORAGE, GEMINI_MODEL_STORAGE, GEMINI_THINKING_STORAGE,
+    OLLAMA_URL_STORAGE, OLLAMA_MODEL_STORAGE, OLLAMA_THINKING_STORAGE,
+  ], result => {
+    const provider = result[LLM_PROVIDER_STORAGE] || "gemini";
+    currentProviderType = provider;
+    $providerSelect.value = provider;
+
+    if (provider === "ollama") {
+      $geminiSettings.style.display = "none";
+      $ollamaSettings.style.display = "flex";
+      const ollamaUrl = result[OLLAMA_URL_STORAGE] || DEFAULT_OLLAMA_URL;
+      const ollamaModel = result[OLLAMA_MODEL_STORAGE] || DEFAULT_OLLAMA_MODEL;
+      const ollamaThinking = result[OLLAMA_THINKING_STORAGE] || "";
+      $ollamaUrlInput.value = ollamaUrl;
+      $ollamaModelInput.value = ollamaModel;
+      $ollamaThinkingSelect.value = ollamaThinking;
+      initProvider("ollama", { ollamaUrl, ollamaModel, ollamaThinking });
     } else {
-      setStatus("No API key — click ⚙️ to add one.");
+      $geminiSettings.style.display = "flex";
+      $ollamaSettings.style.display = "none";
+      geminiApiKey = result[API_KEY_STORAGE] || "";
+      const geminiModel = result[GEMINI_MODEL_STORAGE] || DEFAULT_GEMINI_MODEL;
+      const geminiThinking = result[GEMINI_THINKING_STORAGE] || "";
+      $geminiModelInput.value = geminiModel;
+      $geminiThinkingSelect.value = geminiThinking;
+      if (geminiApiKey) {
+        $apiKeyInput.value = "••••••••••••••••";
+        initProvider("gemini", { apiKey: geminiApiKey, geminiModel, geminiThinking });
+      } else {
+        setStatus("No API key — click ⚙️ to add one.");
+      }
     }
 
     const serverUrl = result[MCP_SERVER_URL_STORAGE] || "http://localhost:8000";
@@ -368,7 +415,7 @@ function loadSettings() {
     MCP_URL = `${serverUrl.replace(/\/$/, "")}/mcp`;
     DASHBOARD_URL = `${serverUrl.replace(/\/$/, "")}/dashboard`;
 
-    $runBtn.disabled = !geminiApiKey;
+    $runBtn.disabled = !isProviderReady();
     checkServer();
   });
 }
@@ -414,28 +461,56 @@ $themeBtn.addEventListener("click", () => {
   }
 });
 
-$saveSettingsBtn.addEventListener("click", () => {
-  const key = $apiKeyInput.value.trim();
-  const serverUrl = $mcpUrlInput.value.trim() || "http://localhost:8000";
-
-  const settings = {
-    [MCP_SERVER_URL_STORAGE]: serverUrl
-  };
-
-  if (key && !key.startsWith("•")) {
-    geminiApiKey = key;
-    initGemini(key);
-    settings[API_KEY_STORAGE] = key;
-    $apiKeyInput.value = "••••••••••••••••";
+$providerSelect.addEventListener("change", () => {
+  const provider = $providerSelect.value;
+  if (provider === "ollama") {
+    $geminiSettings.style.display = "none";
+    $ollamaSettings.style.display = "flex";
+  } else {
+    $geminiSettings.style.display = "flex";
+    $ollamaSettings.style.display = "none";
   }
+});
 
+$saveSettingsBtn.addEventListener("click", () => {
+  const provider = $providerSelect.value;
+  const serverUrl = $mcpUrlInput.value.trim() || "http://localhost:8000";
   const cleanUrl = serverUrl.replace(/\/$/, "");
   MCP_URL = `${cleanUrl}/mcp`;
   DASHBOARD_URL = `${cleanUrl}/dashboard`;
 
+  const settings = {
+    [MCP_SERVER_URL_STORAGE]: serverUrl,
+    [LLM_PROVIDER_STORAGE]: provider,
+  };
+
+  if (provider === "ollama") {
+    const ollamaUrl = $ollamaUrlInput.value.trim() || DEFAULT_OLLAMA_URL;
+    const ollamaModel = $ollamaModelInput.value.trim() || DEFAULT_OLLAMA_MODEL;
+    const ollamaThinking = $ollamaThinkingSelect.value;
+    settings[OLLAMA_URL_STORAGE] = ollamaUrl;
+    settings[OLLAMA_MODEL_STORAGE] = ollamaModel;
+    settings[OLLAMA_THINKING_STORAGE] = ollamaThinking;
+    initProvider("ollama", { ollamaUrl, ollamaModel, ollamaThinking });
+  } else {
+    const key = $apiKeyInput.value.trim();
+    const geminiModel = $geminiModelInput.value.trim() || DEFAULT_GEMINI_MODEL;
+    const geminiThinking = $geminiThinkingSelect.value;
+    settings[GEMINI_MODEL_STORAGE] = geminiModel;
+    settings[GEMINI_THINKING_STORAGE] = geminiThinking;
+    if (key && !key.startsWith("•")) {
+      geminiApiKey = key;
+      settings[API_KEY_STORAGE] = key;
+      $apiKeyInput.value = "••••••••••••••••";
+      initProvider("gemini", { apiKey: geminiApiKey, geminiModel, geminiThinking });
+    } else {
+      initProvider("gemini", { apiKey: geminiApiKey, geminiModel, geminiThinking });
+    }
+  }
+
   chrome.storage.local.set(settings, () => {
     $keyStatus.textContent = "Settings saved.";
-    $runBtn.disabled = !geminiApiKey;
+    $runBtn.disabled = !isProviderReady();
     setTimeout(() => { $keyStatus.textContent = ""; }, 2000);
     checkServer();
   });
@@ -443,7 +518,7 @@ $saveSettingsBtn.addEventListener("click", () => {
 
 $runBtn.addEventListener("click", async () => {
   const prompt = $promptInput.value.trim();
-  if (!prompt || !geminiApiKey) return;
+  if (!prompt || !isProviderReady()) return;
 
   console.log(`[Before runAgent] conversationHistory length:`, conversationHistory.length);
   $runBtn.disabled = true;
@@ -471,10 +546,12 @@ $promptInput.addEventListener("input", () => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes[API_KEY_STORAGE]?.newValue) {
+  if (area === "local" && changes[API_KEY_STORAGE]?.newValue && currentProviderType === "gemini") {
     geminiApiKey = changes[API_KEY_STORAGE].newValue;
-    initGemini(geminiApiKey);
-    $runBtn.disabled = false;
+    const geminiModel = $geminiModelInput.value.trim() || DEFAULT_GEMINI_MODEL;
+    const geminiThinking = $geminiThinkingSelect.value;
+    initProvider("gemini", { apiKey: geminiApiKey, geminiModel, geminiThinking });
+    $runBtn.disabled = !isProviderReady();
     setStatus("API key updated. Enter a prompt.");
   }
 });
@@ -535,6 +612,29 @@ document.addEventListener("mouseup", () => {
   isResizing = false;
   $resizer.classList.remove("active");
 });
+
+// ── Preset buttons ────────────────────────────────────────────────────────────
+
+const PRESETS = {
+  headlines: 'Fetch the top 6 latest tech articles from all sources (HN, Dev.to, Reddit) and render a dashboard with article cards.',
+  ai: 'Fetch the latest articles on AI and Large Language Models from all sources, save new ones to the library, and render a dashboard with a bar chart showing article counts by source.',
+  library: 'Show all saved articles in the local library as a dashboard with article cards.',
+  digest: 'Fetch the top trending tech articles from this week across all sources and create a summary dashboard with key highlights and a chart.',
+  compare: 'Compare recent coverage of React vs Vue vs Angular by fetching articles on each topic, then render a dashboard with a bar chart comparing article counts and a summary.',
+};
+
+function firePreset(key) {
+  $promptInput.value = PRESETS[key];
+  $promptInput.style.height = "auto";
+  $promptInput.style.height = Math.min($promptInput.scrollHeight, 200) + "px";
+  $runBtn.click();
+}
+
+$presetHeadlines.addEventListener("click", () => firePreset("headlines"));
+$presetAi.addEventListener("click", () => firePreset("ai"));
+$presetLibrary.addEventListener("click", () => firePreset("library"));
+$presetDigest.addEventListener("click", () => firePreset("digest"));
+$presetCompare.addEventListener("click", () => firePreset("compare"));
 
 updateChatButtonStates();
 loadTheme();
