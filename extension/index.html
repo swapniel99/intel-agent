@@ -188,6 +188,26 @@
 
     #key-status { font-size: 12px; color: var(--ok); min-height: 18px; margin-top: 4px; }
 
+    #settings-panel select {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      appearance: none;
+    }
+
+    #settings-panel select:focus { border-color: var(--accent); }
+
+    .setting-group { display: flex; flex-direction: column; }
+
+    #ollama-settings, #gemini-settings { flex-direction: column; gap: 16px; }
+
     /* ── Main content ── */
     #main-view {
       display: flex;
@@ -469,8 +489,35 @@
 
   <div id="settings-panel">
     <div class="setting-group">
-      <label for="api-key-input">Gemini API Key</label>
-      <input id="api-key-input" type="password" placeholder="AIza…" />
+      <label for="provider-select">LLM Provider</label>
+      <select id="provider-select">
+        <option value="gemini">Gemini (Google AI)</option>
+        <option value="ollama">Gemma via Ollama (local)</option>
+      </select>
+    </div>
+    <div id="gemini-settings" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="setting-group">
+        <label for="api-key-input">Gemini API Key</label>
+        <input id="api-key-input" type="password" placeholder="AIza…" />
+      </div>
+      <div class="setting-group">
+        <label for="gemini-model-input">Model</label>
+        <input id="gemini-model-input" type="text" placeholder="gemini-3-flash-preview" />
+      </div>
+    </div>
+    <div id="ollama-settings" style="display:none; flex-direction:column; gap:16px;">
+      <div class="setting-group">
+        <label for="ollama-url-input">Ollama URL</label>
+        <input id="ollama-url-input" type="text" placeholder="http://localhost:11434" />
+      </div>
+      <div class="setting-group">
+        <label for="ollama-model-input">Model</label>
+        <input id="ollama-model-input" type="text" placeholder="gemma4:26b" />
+      </div>
+      <div class="setting-group" style="flex-direction:row;align-items:center;gap:10px;">
+        <input id="ollama-thinking-toggle" type="checkbox" style="width:auto;cursor:pointer;" />
+        <label for="ollama-thinking-toggle" style="margin:0;cursor:pointer;">Enable thinking (logs to console)</label>
+      </div>
     </div>
     <div class="setting-group">
       <label for="mcp-url-input">MCP Server URL</label>

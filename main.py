@@ -525,9 +525,15 @@ def _build_chart_node(chart: dict) -> dict | None:
 
     # Smart axis key detection
     x_axis = chart.get("xAxis") or chart.get("axisKey") or chart.get("x_axis") or chart.get("axis_key")
+    # For bar/line/area: nameKey means the categorical x-axis dimension
+    if not x_axis and ctype not in ("pie", "radial", "radar") and chart.get("nameKey"):
+        x_axis = chart["nameKey"]
     if not x_axis and data and isinstance(data[0], dict):
-        # Find first key that isn't in series dataKeys
+        # Prefer dataKey's complement: if dataKey specified, use the other key as x_axis
+        explicit_data_key = chart.get("dataKey")
         series_keys = {s.get("dataKey") for s in series if s.get("dataKey")}
+        if explicit_data_key:
+            series_keys.add(explicit_data_key)
         for k in data[0].keys():
             if k not in series_keys:
                 x_axis = k
@@ -536,7 +542,11 @@ def _build_chart_node(chart: dict) -> dict | None:
         x_axis = "label"
 
     if data and not series and ctype not in ("pie", "radial"):
-        series = [{"dataKey": k, "label": k.capitalize()} for k in data[0] if k != x_axis]
+        explicit_data_key = chart.get("dataKey")
+        if explicit_data_key:
+            series = [{"dataKey": explicit_data_key, "label": explicit_data_key.capitalize()}]
+        else:
+            series = [{"dataKey": k, "label": k.capitalize()} for k in data[0] if k != x_axis]
 
     node: dict = {"type": type_map[ctype], "data": data, "height": chart.get("height", 300)}
 

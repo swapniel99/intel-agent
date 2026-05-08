@@ -1,10 +1,19 @@
 import { GoogleGenAI } from "./genai.js";
+import { GeminiProvider } from "./providers/gemini-provider.js";
+import { OllamaProvider } from "./providers/ollama-provider.js";
 
 let MCP_URL = "http://localhost:8000/mcp";
-const MODEL = "gemini-3.1-flash-lite-preview";
+const GEMINI_MODEL_STORAGE = "gemini_model";
+const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
 const API_KEY_STORAGE = "gemini_api_key";
 const MCP_SERVER_URL_STORAGE = "mcp_server_url";
 const THEME_STORAGE = "theme";
+const LLM_PROVIDER_STORAGE = "llm_provider";
+const OLLAMA_URL_STORAGE = "ollama_url";
+const OLLAMA_MODEL_STORAGE = "ollama_model";
+const OLLAMA_THINKING_STORAGE = "ollama_thinking";
+const DEFAULT_OLLAMA_URL = "http://localhost:11434";
+const DEFAULT_OLLAMA_MODEL = "gemma4:26b";
 
 const $dot = document.getElementById("server-dot");
 const $status = document.getElementById("status-bar");
@@ -34,11 +43,20 @@ const $presetPie = document.getElementById("preset-pie");
 const $presetTrends = document.getElementById("preset-trends");
 const $presetRankings = document.getElementById("preset-rankings");
 const $presetAnalysis = document.getElementById("preset-analysis");
+const $providerSelect = document.getElementById("provider-select");
+const $ollamaSettings = document.getElementById("ollama-settings");
+const $ollamaUrlInput = document.getElementById("ollama-url-input");
+const $ollamaModelInput = document.getElementById("ollama-model-input");
+const $geminiSettings = document.getElementById("gemini-settings");
+const $geminiModelInput = document.getElementById("gemini-model-input");
+const $ollamaThinkingToggle = document.getElementById("ollama-thinking-toggle");
 
 let mcpTools = [];
 let geminiApiKey = "";
 let mcpSessionId = null;
 let ai = null;
+let activeProvider = null;
+let currentProviderType = "gemini";
 let conversationHistory = [];
 let userPromptHistory = [];
 let conversationCheckpoints = [];
@@ -76,13 +94,11 @@ async function mcpRequest(method, params = {}, retries = 2) {
 
   if (!res) throw lastErr;
 
-  // Handle server restart / session loss (404 Not Found)
   if (res.status === 404 && mcpSessionId) {
     console.warn("MCP session not found (server likely restarted). Re-initializing...");
     mcpSessionId = null;
-    await mcpInitialize(); // Re-initialize connection
+    await mcpInitialize();
 
-    // Retry the original request with new session
     const newHeaders = { ...headers };
     if (mcpSessionId) newHeaders["mcp-session-id"] = mcpSessionId;
     res = await fetch(MCP_URL, {
@@ -145,7 +161,7 @@ async function callMcpTool(name, args) {
   return content;
 }
 
-// ── Gemini helpers ────────────────────────────────────────────────────────────
+// ── Provider helpers ──────────────────────────────────────────────────────────
 
 function mcpToolsToFunctionDeclarations(tools) {
   return tools.map(t => ({
@@ -153,6 +169,29 @@ function mcpToolsToFunctionDeclarations(tools) {
     description: t.description || "",
     parameters: t.inputSchema || { type: "object", properties: {} },
   }));
+}
+
+function initProvider(type, { apiKey, geminiModel, ollamaUrl, ollamaModel, ollamaThinking } = {}) {
+  currentProviderType = type;
+  if (type === "ollama") {
+    activeProvider = new OllamaProvider(
+      ollamaUrl || DEFAULT_OLLAMA_URL,
+      ollamaModel || DEFAULT_OLLAMA_MODEL,
+      !!ollamaThinking
+    );
+  } else {
+    if (apiKey) {
+      ai = new GoogleGenAI({ apiKey });
+      activeProvider = new GeminiProvider(ai, geminiModel || DEFAULT_GEMINI_MODEL);
+    } else {
+      activeProvider = null;
+    }
+  }
+}
+
+function isProviderReady() {
+  if (currentProviderType === "ollama") return activeProvider !== null;
+  return !!geminiApiKey && activeProvider !== null;
 }
 
 // ── Agent loop ────────────────────────────────────────────────────────────────
@@ -177,7 +216,7 @@ async function runAgent(userPrompt) {
   const userTurn = { role: "user", parts: [{ text: userPrompt }] };
   conversationHistory.push(userTurn);
   const contents = conversationHistory;
-  console.log(`[Agent Init] After push, history length: ${contents.length}, user turns: ${contents.filter(t => t.role === "user").length}`);
+  console.log(`[Agent Init] history length: ${contents.length}`);
 
   const now = new Date().toLocaleString();
   const systemInstruction = `You are IntelAgent, an AI research assistant.
@@ -205,48 +244,25 @@ Rules (CRITICAL):
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const forceFinish = turn >= 8;
-    console.log(`[Turn ${turn + 1}] Calling Gemini${forceFinish ? " (FORCE FINISH)" : ""}…`);
-    const response = await ai.models.generateContent({
-      model: MODEL,
+    console.log(`[Turn ${turn + 1}/${currentProviderType}]${forceFinish ? " FORCE FINISH" : ""}`);
+
+    const { rawModelParts, toolCalls, textParts } = await activeProvider.generateContent(
       contents,
-      config: {
-        systemInstruction,
-        tools: [
-          { functionDeclarations: functionDeclarations.length ? functionDeclarations : [] },
-          ...(forceFinish ? [] : [{ googleSearch: {} }]),
-        ],
-        toolConfig: {
-          functionCallingConfig: forceFinish
-            ? { mode: "ANY", allowedFunctionNames: ["render_dashboard"] }
-            : { mode: "AUTO" },
-          ...(!forceFinish && {
-            googleSearchRetrieval: {
-              dynamicRetrievalConfig: { mode: "DYNAMIC", dynamicThreshold: 0.3 },
-            },
-            includeServerSideToolInvocations: true,
-          }),
-        },
-        generationConfig: { temperature: 0 },
-      },
-    });
+      functionDeclarations,
+      systemInstruction,
+      forceFinish
+    );
 
-    const candidate = response.candidates?.[0];
-    if (!candidate) throw new Error("No candidates in Gemini response");
-
-    const parts = candidate.content?.parts || [];
-    contents.push({ role: "model", parts });
-
-    const toolCalls = response.functionCalls;
+    contents.push({ role: "model", parts: rawModelParts });
 
     if (!toolCalls || toolCalls.length === 0) {
-      const textResponse = parts.map(p => p.text || "").join("\n").trim();
-      console.log(`[Turn ${turn + 1}] No tool calls. Text response: "${textResponse.slice(0, 100)}…"`);
-      if (textResponse) {
+      console.log(`[Turn ${turn + 1}] No tool calls. Text: "${textParts.slice(0, 100)}…"`);
+      if (textParts) {
         setStatus("Rendering fallback…");
         try {
           await callMcpTool("render_dashboard", {
             title: "Research Result",
-            summary: textResponse
+            summary: textParts,
           });
           renderDashboard();
           setStatus("Done.", "success");
@@ -261,17 +277,17 @@ Rules (CRITICAL):
     }
 
     const toolResponseParts = [];
-
     let dashboardRendered = false;
+
     console.log(`[Turn ${turn + 1}] ${toolCalls.length} tool calls:`);
     for (const call of toolCalls) {
       const { name, args } = call;
       console.log(`  - ${name}(${JSON.stringify(args).slice(0, 60)}…)`);
 
       if (forceFinish && name !== "render_dashboard") {
-        console.warn(`  → forceFinish active, skipping disallowed tool: ${name}`);
+        console.warn(`  → forceFinish active, skipping: ${name}`);
         toolResponseParts.push({
-          functionResponse: { name, response: { content: { error: "Only render_dashboard allowed at this stage" } } }
+          functionResponse: { name, response: { content: { error: "Only render_dashboard allowed at this stage" } } },
         });
         continue;
       }
@@ -337,7 +353,6 @@ function renderDashboard() {
   $emptyState.style.display = "none";
   $dashboardFrame.style.display = "block";
   const theme = document.documentElement.getAttribute("data-theme") || "dark";
-  // Cache-bust so iframe re-fetches latest /dashboard HTML
   $dashboardFrame.src = `${DASHBOARD_URL}?theme=${theme}&t=${Date.now()}`;
 }
 
@@ -351,7 +366,12 @@ function setServerStatus(online) {
         ? "Server connected but no tools loaded — check backend."
         : "Server connected. Enter a prompt."
   );
-  $runBtn.disabled = !online || !geminiApiKey || noTools;
+  $runBtn.disabled = !online || !isProviderReady() || noTools;
+}
+
+function updateProviderUI(type) {
+  $ollamaSettings.style.display = type === "ollama" ? "flex" : "none";
+  $geminiSettings.style.display = type === "gemini" ? "flex" : "none";
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -366,28 +386,40 @@ async function checkServer() {
   }
 }
 
-function initGemini(apiKey) {
-  ai = new GoogleGenAI({ apiKey });
-}
-
 function loadSettings() {
-  chrome.storage.local.get([API_KEY_STORAGE, MCP_SERVER_URL_STORAGE], result => {
-    geminiApiKey = result[API_KEY_STORAGE] || "";
-    if (geminiApiKey) {
-      initGemini(geminiApiKey);
-      $apiKeyInput.value = "••••••••••••••••";
-    } else {
-      setStatus("No API key — click ⚙️ to add one.");
+  chrome.storage.local.get(
+    [API_KEY_STORAGE, MCP_SERVER_URL_STORAGE, THEME_STORAGE, LLM_PROVIDER_STORAGE, GEMINI_MODEL_STORAGE, OLLAMA_URL_STORAGE, OLLAMA_MODEL_STORAGE, OLLAMA_THINKING_STORAGE],
+    result => {
+      geminiApiKey = result[API_KEY_STORAGE] || "";
+      const providerType = result[LLM_PROVIDER_STORAGE] || "gemini";
+      const geminiModel = result[GEMINI_MODEL_STORAGE] || DEFAULT_GEMINI_MODEL;
+      const ollamaUrl = result[OLLAMA_URL_STORAGE] || DEFAULT_OLLAMA_URL;
+      const ollamaModel = result[OLLAMA_MODEL_STORAGE] || DEFAULT_OLLAMA_MODEL;
+      const ollamaThinking = !!result[OLLAMA_THINKING_STORAGE];
+
+      $providerSelect.value = providerType;
+      $geminiModelInput.value = geminiModel;
+      $ollamaUrlInput.value = ollamaUrl;
+      $ollamaModelInput.value = ollamaModel;
+      $ollamaThinkingToggle.checked = ollamaThinking;
+      updateProviderUI(providerType);
+
+      if (geminiApiKey) {
+        $apiKeyInput.value = "••••••••••••••••";
+      } else if (providerType === "gemini") {
+        setStatus("No API key — click ⚙️ to add one.");
+      }
+
+      initProvider(providerType, { apiKey: geminiApiKey, geminiModel, ollamaUrl, ollamaModel, ollamaThinking });
+
+      const serverUrl = result[MCP_SERVER_URL_STORAGE] || "http://localhost:8000";
+      $mcpUrlInput.value = serverUrl;
+      MCP_URL = `${serverUrl.replace(/\/$/, "")}/mcp`;
+      DASHBOARD_URL = `${serverUrl.replace(/\/$/, "")}/dashboard`;
+
+      checkServer();
     }
-
-    const serverUrl = result[MCP_SERVER_URL_STORAGE] || "http://localhost:8000";
-    $mcpUrlInput.value = serverUrl;
-    MCP_URL = `${serverUrl.replace(/\/$/, "")}/mcp`;
-    DASHBOARD_URL = `${serverUrl.replace(/\/$/, "")}/dashboard`;
-
-    $runBtn.disabled = !geminiApiKey;
-    checkServer();
-  });
+  );
 }
 
 async function resetConnection() {
@@ -409,6 +441,10 @@ $resetBtn.addEventListener("click", resetConnection);
 $settingsBtn.addEventListener("click", () => {
   const visible = $settingsPanel.classList.toggle("visible");
   $settingsBtn.classList.toggle("active", visible);
+});
+
+$providerSelect.addEventListener("change", () => {
+  updateProviderUI($providerSelect.value);
 });
 
 function applyTheme(theme) {
@@ -434,14 +470,23 @@ $themeBtn.addEventListener("click", () => {
 $saveSettingsBtn.addEventListener("click", () => {
   const key = $apiKeyInput.value.trim();
   const serverUrl = $mcpUrlInput.value.trim() || "http://localhost:8000";
+  const providerType = $providerSelect.value;
+  const geminiModel = $geminiModelInput.value.trim() || DEFAULT_GEMINI_MODEL;
+  const ollamaUrl = $ollamaUrlInput.value.trim() || DEFAULT_OLLAMA_URL;
+  const ollamaModel = $ollamaModelInput.value.trim() || DEFAULT_OLLAMA_MODEL;
+  const ollamaThinking = $ollamaThinkingToggle.checked;
 
   const settings = {
-    [MCP_SERVER_URL_STORAGE]: serverUrl
+    [MCP_SERVER_URL_STORAGE]: serverUrl,
+    [LLM_PROVIDER_STORAGE]: providerType,
+    [GEMINI_MODEL_STORAGE]: geminiModel,
+    [OLLAMA_URL_STORAGE]: ollamaUrl,
+    [OLLAMA_MODEL_STORAGE]: ollamaModel,
+    [OLLAMA_THINKING_STORAGE]: ollamaThinking,
   };
 
   if (key && !key.startsWith("•")) {
     geminiApiKey = key;
-    initGemini(key);
     settings[API_KEY_STORAGE] = key;
     $apiKeyInput.value = "••••••••••••••••";
   }
@@ -450,24 +495,34 @@ $saveSettingsBtn.addEventListener("click", () => {
   MCP_URL = `${cleanUrl}/mcp`;
   DASHBOARD_URL = `${cleanUrl}/dashboard`;
 
+  // Re-init provider with new settings
+  initProvider(providerType, { apiKey: geminiApiKey, geminiModel, ollamaUrl, ollamaModel, ollamaThinking });
+
+  // Clear history when switching providers (incompatible formats mid-session)
+  if (providerType !== currentProviderType) {
+    conversationHistory = [];
+    userPromptHistory = [];
+    conversationCheckpoints = [];
+    $chatHistory.innerHTML = "";
+    updateChatButtonStates();
+  }
+
   chrome.storage.local.set(settings, () => {
     $keyStatus.textContent = "Settings saved.";
-    $runBtn.disabled = !geminiApiKey;
-    setTimeout(() => { $keyStatus.textContent = ""; }, 2000);
     checkServer();
+    setTimeout(() => { $keyStatus.textContent = ""; }, 2000);
   });
 });
 
 $runBtn.addEventListener("click", async () => {
   const prompt = $promptInput.value.trim();
-  if (!prompt || !geminiApiKey) return;
+  if (!prompt || !isProviderReady()) return;
 
-  console.log(`[Before runAgent] conversationHistory length:`, conversationHistory.length);
+  console.log(`[Before runAgent] history length:`, conversationHistory.length);
   $runBtn.disabled = true;
   try {
     await runAgent(prompt);
   } catch (err) {
-    // Restore fully to pre-prompt state using the checkpoint runAgent just pushed
     const checkpoint = conversationCheckpoints.pop();
     userPromptHistory.pop();
     if (checkpoint !== undefined) conversationHistory.length = checkpoint;
@@ -475,8 +530,8 @@ $runBtn.addEventListener("click", async () => {
     updateChatButtonStates();
     setStatus(`Error: ${err.message}`, "error");
   } finally {
-    console.log(`[After runAgent] conversationHistory length:`, conversationHistory.length);
-    $runBtn.disabled = false;
+    console.log(`[After runAgent] history length:`, conversationHistory.length);
+    $runBtn.disabled = !isProviderReady();
   }
 });
 
@@ -493,10 +548,12 @@ $promptInput.addEventListener("input", () => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes[API_KEY_STORAGE]?.newValue) {
+  if (area !== "local") return;
+  if (changes[API_KEY_STORAGE]?.newValue) {
     geminiApiKey = changes[API_KEY_STORAGE].newValue;
-    initGemini(geminiApiKey);
-    $runBtn.disabled = false;
+    if (currentProviderType === "gemini") {
+      initProvider("gemini", { apiKey: geminiApiKey });
+    }
     setStatus("API key updated. Enter a prompt.");
   }
 });
@@ -515,7 +572,6 @@ $undoBtn.addEventListener("click", () => {
   }
 
   conversationHistory.length = checkpoint;
-
   updateChatButtonStates();
 });
 
@@ -547,44 +603,43 @@ $presetRadar.addEventListener("click", () =>
 $presetPie.addEventListener("click", () =>
   setPreset("What is the sentiment breakdown for PharmEasy on Reddit this month?")
 );
-// $presetTrends.addEventListener("click", () =>
-//   setPreset("Show Google Trends interest for 'online pharmacy' across tier1 and tier2 Indian cities this month.")
-// );
+
+// Read the rest of presets from the old file
+$presetTrends?.addEventListener("click", () =>
+  setPreset("What are the content trends for online pharmacy in India this week?")
+);
 $presetRankings.addEventListener("click", () =>
-  setPreset("Check search rankings for PharmEasy vs Tata 1mg vs Apollo Pharmacy vs Netmeds for 'buy medicines online india', 'medicine delivery app india', 'book lab test india', 'lab tests at home india', and 'order medicines online india'.")
+  setPreset("Check search rankings for PharmEasy, Tata 1mg, Apollo for keywords: online pharmacy, medicine delivery, health app.")
 );
 $presetAnalysis.addEventListener("click", () =>
-  setPreset("Run a full competitive analysis for PharmEasy vs Tata 1mg vs Apollo Pharmacy: sentiment on Reddit and Twitter, and search rankings for 'buy medicines online india'.")
+  setPreset("Full competitive analysis: sentiment, search rankings, and content trends for PharmEasy vs Tata 1mg vs Apollo.")
 );
 
-// ── Resizable panels ──────────────────────────────────────────────────────────
+// ── Resizer ───────────────────────────────────────────────────────────────────
 
-$resizer.addEventListener("mousedown", () => {
+$resizer.addEventListener("mousedown", e => {
   isResizing = true;
   $resizer.classList.add("active");
+  e.preventDefault();
 });
 
-document.addEventListener("mousemove", (e) => {
+document.addEventListener("mousemove", e => {
   if (!isResizing) return;
-
-  const mainRect = $mainView.getBoundingClientRect();
-  const newDashWidth = e.clientX - mainRect.left;
-  const minDash = mainRect.width * 0.3;
-  const maxDash = mainRect.width * 0.8;
-  const clamped = Math.max(minDash, Math.min(maxDash, newDashWidth));
-
-  const dashPercent = (clamped / mainRect.width) * 100;
-  const chatPercent = 100 - dashPercent - 0.5;
-
-  $dashboardPanel.style.flex = `0 0 ${dashPercent}%`;
-  $chatPanel.style.flex = `0 0 ${chatPercent}%`;
+  const totalWidth = $mainView.offsetWidth;
+  const offset = e.clientX - $mainView.getBoundingClientRect().left;
+  const pct = Math.min(Math.max((offset / totalWidth) * 100, 20), 80);
+  $dashboardPanel.style.flex = `0 0 ${pct}%`;
+  $chatPanel.style.flex = `0 0 ${100 - pct}%`;
 });
 
 document.addEventListener("mouseup", () => {
-  isResizing = false;
-  $resizer.classList.remove("active");
+  if (isResizing) {
+    isResizing = false;
+    $resizer.classList.remove("active");
+  }
 });
 
-updateChatButtonStates();
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+
 loadTheme();
 loadSettings();
