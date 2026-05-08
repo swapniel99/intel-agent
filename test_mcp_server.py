@@ -5,16 +5,26 @@ MCP server integration tests. Requires server running at http://localhost:8000.
     uv run pytest test_mcp_server.py -v
 """
 import json
+import os
 import sys
 import pytest
-import httpx
+from dotenv import load_dotenv
+load_dotenv()
+
 from mcp.client.stdio import stdio_client, StdioServerParameters
 from mcp.client.session import ClientSession
 from starlette.testclient import TestClient
 from main import mcp
 
-SERVER_URL = "http://localhost:8000/mcp"
-TOOL_NAMES = {"fetch_tech_news", "manage_local_library", "render_dashboard"}
+requires_twitter = pytest.mark.skipif(
+    not os.getenv("TWITTER_BEARER_TOKEN"),
+    reason="TWITTER_BEARER_TOKEN not set",
+)
+
+TOOL_NAMES = {
+    "fetch_brand_sentiment", "fetch_content_trends",
+    "fetch_search_presence", "render_dashboard",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -23,7 +33,6 @@ TOOL_NAMES = {"fetch_tech_news", "manage_local_library", "render_dashboard"}
 
 @pytest.fixture
 def client():
-    # Use the same transport as the main app
     return TestClient(mcp.http_app(transport="streamable-http"))
 
 
@@ -62,179 +71,7 @@ async def test_server_connects():
 
 
 # ---------------------------------------------------------------------------
-# fetch_tech_news
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_fetch_hn():
-    data = _parse(await _call("fetch_tech_news", {"query": "python", "limit": 3, "source": "hn"}))
-    if any("status" in d and "unavailable" in d["status"] for d in data):
-        pytest.skip("HN unavailable")
-    articles = [d for d in data if "title" in d]
-    assert len(articles) > 0
-    for a in articles:
-        assert "url" in a
-        assert a.get("source") == "hn"
-
-
-@pytest.mark.asyncio
-async def test_fetch_dev():
-    data = _parse(await _call("fetch_tech_news", {"query": "python", "limit": 3, "source": "dev"}))
-    if any("status" in d and "unavailable" in d["status"] for d in data):
-        pytest.skip("Dev.to unavailable")
-    articles = [d for d in data if "title" in d]
-    assert len(articles) > 0
-    for a in articles:
-        assert "url" in a
-        assert a.get("source") == "dev"
-
-
-@pytest.mark.asyncio
-async def test_fetch_reddit():
-    data = _parse(await _call("fetch_tech_news", {"query": "python", "limit": 3, "source": "reddit"}))
-    if any("status" in d and "unavailable" in d["status"] for d in data):
-        pytest.skip("Reddit unavailable (internet/throttling)")
-    articles = [d for d in data if "title" in d]
-    assert len(articles) > 0
-    for a in articles:
-        assert "url" in a
-        assert a.get("source") == "reddit"
-
-
-@pytest.mark.asyncio
-async def test_fetch_all_sources():
-    data = _parse(await _call("fetch_tech_news", {"query": "AI", "limit": 6, "source": "all"}))
-    if any("status" in d and "unavailable" in d["status"] for d in data):
-        pytest.skip("One or more sources unavailable")
-    articles = [d for d in data if "title" in d]
-    sources = {a.get("source") for a in articles}
-    assert len(articles) > 0
-    assert len(sources) >= 2, f"Expected multi-source, got: {sources}"
-
-
-@pytest.mark.asyncio
-async def test_fetch_unknown_source():
-    data = _parse(await _call("fetch_tech_news", {"query": "AI", "limit": 3, "source": "bogus"}))
-    assert isinstance(data, list)
-    assert any("status" in d for d in data)
-
-
-@pytest.mark.asyncio
-async def test_fetch_returns_list():
-    data = _parse(await _call("fetch_tech_news", {"query": "rust", "limit": 5, "source": "hn"}))
-    assert isinstance(data, list)
-
-
-# ---------------------------------------------------------------------------
-# manage_local_library
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_library_list_all():
-    data = _parse(await _call("manage_local_library", {"action": "list_all"}))
-    assert "status" in data
-    assert "articles" in data
-    assert isinstance(data["articles"], list)
-
-
-@pytest.mark.asyncio
-async def test_library_check_duplicates_no_articles():
-    data = _parse(await _call("manage_local_library", {"action": "check_duplicates"}))
-    assert "status" in data
-
-
-@pytest.mark.asyncio
-async def test_library_save_and_dedup():
-    article = {
-        "title": "Test Article pytest",
-        "url": "https://example.com/pytest-unique-12345",
-        "points": 42,
-        "source": "test",
-        "ai_summary": "Pytest integration test article.",
-    }
-    data = _parse(await _call("manage_local_library", {"action": "save_new", "articles": [article]}))
-    assert "new articles saved" in data["status"]
-
-    data2 = _parse(await _call("manage_local_library", {"action": "save_new", "articles": [article]}))
-    assert "1 duplicates skipped" in data2["status"]
-    assert "0 new articles saved" in data2["status"]
-
-
-@pytest.mark.asyncio
-async def test_library_check_duplicates_novel():
-    novel = {"title": "Novel", "url": "https://example.com/definitely-not-saved-xyz987"}
-    data = _parse(await _call("manage_local_library", {"action": "check_duplicates", "articles": [novel]}))
-    assert "articles" in data
-    assert any(a["url"] == novel["url"] for a in data["articles"])
-
-
-@pytest.mark.asyncio
-async def test_library_search():
-    data = _parse(await _call("manage_local_library", {"action": "search", "query": "pytest"}))
-    assert "articles" in data
-
-
-@pytest.mark.asyncio
-async def test_library_search_missing_query():
-    data = _parse(await _call("manage_local_library", {"action": "search"}))
-    assert "query is required" in data["status"]
-
-
-@pytest.mark.asyncio
-async def test_library_update_and_delete():
-    article = {
-        "title": "Update/Delete Test",
-        "url": "https://example.com/update-delete-test-99999",
-        "points": 1,
-        "source": "test",
-        "ai_summary": "Will be updated then deleted.",
-    }
-    await _call("manage_local_library", {"action": "save_new", "articles": [article]})
-
-    library = _parse(await _call("manage_local_library", {"action": "list_all"}))["articles"]
-    target = next((a for a in library if a["url"] == article["url"]), None)
-    assert target is not None
-    aid = target["id"]
-
-    upd = _parse(await _call("manage_local_library", {"action": "update", "article_id": aid, "updates": {"ai_summary": "Updated."}}))
-    assert "updated successfully" in upd["status"]
-
-    del_data = _parse(await _call("manage_local_library", {"action": "delete", "article_id": aid}))
-    assert "deleted successfully" in del_data["status"]
-
-    library2 = _parse(await _call("manage_local_library", {"action": "list_all"}))["articles"]
-    assert all(a["id"] != aid for a in library2)
-
-
-@pytest.mark.asyncio
-async def test_library_delete_nonexistent():
-    data = _parse(await _call("manage_local_library", {
-        "action": "delete",
-        "article_id": "00000000-0000-0000-0000-000000000000",
-    }))
-    assert "not found" in data["status"]
-
-
-@pytest.mark.asyncio
-async def test_library_update_missing_params():
-    data = _parse(await _call("manage_local_library", {"action": "update"}))
-    assert "required" in data["status"]
-
-
-@pytest.mark.asyncio
-async def test_library_unknown_action():
-    data = _parse(await _call("manage_local_library", {"action": "explode"}))
-    assert "Unknown action" in data["status"]
-
-
-@pytest.mark.asyncio
-async def test_library_save_no_articles():
-    data = _parse(await _call("manage_local_library", {"action": "save_new"}))
-    assert "0 articles provided" in data["status"]
-
-
-# ---------------------------------------------------------------------------
-# render_prefab_dashboard
+# render_dashboard
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -303,6 +140,183 @@ async def test_render_with_metrics():
         ]
     }))
     assert data.get("status") == "dashboard_ready"
+
+
+# ---------------------------------------------------------------------------
+# fetch_brand_sentiment
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_brand_sentiment_returns_list():
+    data = _parse(await _call("fetch_brand_sentiment", {"brands": ["PharmEasy"], "platforms": "reddit", "timeframe": "w"}))
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+
+@pytest.mark.asyncio
+async def test_brand_sentiment_structure():
+    data = _parse(await _call("fetch_brand_sentiment", {"brands": ["PharmEasy"], "platforms": "reddit", "timeframe": "w"}))
+    row = data[0]
+    assert "brand" in row
+    assert "platform" in row
+    assert "sentiment_score" in row or "status" in row
+
+
+@pytest.mark.asyncio
+async def test_brand_sentiment_multiple_brands():
+    data = _parse(await _call("fetch_brand_sentiment", {
+        "brands": ["PharmEasy", "Apollo"],
+        "platforms": ["reddit"],
+        "timeframe": "w",
+    }))
+    assert isinstance(data, list)
+    brands_seen = {r["brand"] for r in data if "brand" in r}
+    assert len(brands_seen) >= 1
+
+
+@pytest.mark.asyncio
+async def test_brand_sentiment_reddit_and_linkedin():
+    data = _parse(await _call("fetch_brand_sentiment", {
+        "brands": ["PharmEasy"],
+        "platforms": ["reddit", "linkedin"],
+        "timeframe": "w",
+    }))
+    assert isinstance(data, list)
+    platforms_seen = {r["platform"] for r in data if "platform" in r}
+    assert "reddit" in platforms_seen
+
+
+@requires_twitter
+@pytest.mark.asyncio
+async def test_brand_sentiment_twitter():
+    data = _parse(await _call("fetch_brand_sentiment", {
+        "brands": ["PharmEasy"],
+        "platforms": ["twitter"],
+        "timeframe": "w",
+    }))
+    assert isinstance(data, list)
+    row = next((r for r in data if r.get("platform") == "twitter"), None)
+    assert row is not None
+    assert row.get("source") == "twitter_api_v2" or "status" in row
+
+
+@pytest.mark.asyncio
+async def test_brand_sentiment_top_posts_shape():
+    data = _parse(await _call("fetch_brand_sentiment", {"brands": ["PharmEasy"], "platforms": "reddit", "timeframe": "w"}))
+    row = next((r for r in data if r.get("platform") == "reddit" and "top_posts" in r), None)
+    if row is None:
+        pytest.skip("Reddit unavailable or insufficient data")
+    assert isinstance(row["top_posts"], list)
+    if row["top_posts"]:
+        post = row["top_posts"][0]
+        assert "title" in post
+        assert "url" in post
+        assert "sentiment" in post
+
+
+# ---------------------------------------------------------------------------
+# fetch_content_trends
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_content_trends_returns_list():
+    data = _parse(await _call("fetch_content_trends", {"topic": "online pharmacy", "region_tier": "tier1"}))
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+
+@pytest.mark.asyncio
+async def test_content_trends_structure():
+    data = _parse(await _call("fetch_content_trends", {"topic": "medicine delivery"}))
+    row = data[0]
+    assert "city" in row or "status" in row
+
+
+@pytest.mark.asyncio
+async def test_content_trends_tier_filter():
+    data = _parse(await _call("fetch_content_trends", {"topic": "health insurance", "region_tier": "tier1"}))
+    real = [r for r in data if "tier" in r]
+    if real:
+        assert all(r["tier"] == "tier1" for r in real)
+
+
+@pytest.mark.asyncio
+async def test_content_trends_interest_score_range():
+    data = _parse(await _call("fetch_content_trends", {"topic": "online pharmacy"}))
+    real = [r for r in data if "interest_score" in r]
+    for r in real:
+        assert 0 <= r["interest_score"] <= 100
+
+
+@pytest.mark.asyncio
+async def test_content_trends_related_queries_list():
+    data = _parse(await _call("fetch_content_trends", {"topic": "online pharmacy"}))
+    real = [r for r in data if "related_queries" in r]
+    if real:
+        assert isinstance(real[0]["related_queries"], list)
+
+
+# ---------------------------------------------------------------------------
+# fetch_search_presence
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_search_presence_returns_list():
+    data = _parse(await _call("fetch_search_presence", {
+        "brands": ["PharmEasy"],
+        "keywords": ["buy medicine online india"],
+    }))
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+
+@pytest.mark.asyncio
+async def test_search_presence_structure():
+    data = _parse(await _call("fetch_search_presence", {
+        "brands": ["PharmEasy"],
+        "keywords": ["online pharmacy"],
+    }))
+    row = data[0]
+    assert "keyword" in row
+    assert "brand" in row
+    assert "present" in row
+
+
+@pytest.mark.asyncio
+async def test_search_presence_multiple_brands_and_keywords():
+    data = _parse(await _call("fetch_search_presence", {
+        "brands": ["PharmEasy", "Apollo"],
+        "keywords": ["online pharmacy india", "order medicines"],
+    }))
+    assert isinstance(data, list)
+    assert len(data) >= 4
+
+
+@pytest.mark.asyncio
+async def test_search_presence_rank_within_bounds():
+    data = _parse(await _call("fetch_search_presence", {
+        "brands": ["PharmEasy"],
+        "keywords": ["online pharmacy"],
+    }))
+    for row in data:
+        if row.get("rank") is not None:
+            assert 1 <= row["rank"] <= 10
+
+
+@pytest.mark.asyncio
+async def test_search_presence_top_results_shape():
+    data = _parse(await _call("fetch_search_presence", {
+        "brands": ["PharmEasy"],
+        "keywords": ["buy medicine online india"],
+    }))
+    row = next((r for r in data if "top_results" in r), None)
+    if row is None:
+        pytest.skip("DDGS unavailable")
+    assert isinstance(row["top_results"], list)
+    if row["top_results"]:
+        r0 = row["top_results"][0]
+        assert "rank" in r0
+        assert "url" in r0
 
 
 # ---------------------------------------------------------------------------
