@@ -161,8 +161,8 @@ def _score_sentiment(texts: list[str]) -> tuple[dict, list[str]]:
     return aggregate, labels
 
 
-def _bucket_top_posts(items: list[dict], labels: list[str], title_key: str = "title", url_key: str = "url", score_key: str = "score", body_key: str = "body", n: int = 15) -> list[dict]:
-    """Return up to n posts per sentiment label (neg first), tagged with sentiment."""
+def _bucket_top_posts(items: list[dict], labels: list[str], title_key: str = "title", url_key: str = "url", score_key: str = "score", body_key: str = "body", n: int | None = None) -> list[dict]:
+    """Return up to n posts per sentiment label (neg first), tagged with sentiment. If n is None, return all."""
     buckets: dict[str, list[dict]] = {"negative": [], "neutral": [], "positive": []}
     for item, label in zip(items, labels):
         buckets[label].append({
@@ -172,7 +172,7 @@ def _bucket_top_posts(items: list[dict], labels: list[str], title_key: str = "ti
             "score": item.get(score_key, 0),
             "sentiment": label,
         })
-    return [post for label in ("negative", "neutral", "positive") for post in buckets[label][:n]]
+    return [post for label in ("negative", "neutral", "positive") for post in (buckets[label][:n] if n is not None else buckets[label])]
 
 
 def _city_tier(city: str) -> str:
@@ -198,6 +198,7 @@ async def fetch_brand_sentiment(
     timeframe: "d" (day) | "w" (week, default) | "m" (month)
 
     Returns: [{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]
+    - top_posts contains a list of objects with 'title', 'body', 'url', 'score', and 'sentiment'. Use the 'body' text to perform deep qualitative analysis.
     On insufficient data: [{brand, platform, status}] sentinel instead.
     Sentiment score in [-1.0, 1.0]: positive=closer to 1, negative=closer to -1.
     Sentiment scored by RoBERTa model (twitter-roberta-base-sentiment-latest).
