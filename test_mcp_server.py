@@ -199,6 +199,13 @@ async def test_brand_sentiment_twitter():
     assert row is not None
     assert row.get("source") == "twitter_api_v2" or "status" in row
 
+    if row["top_posts"]:
+        post = row["top_posts"][0]
+        assert "title" in post
+        assert "body" in post
+        assert "url" in post
+        assert "sentiment" in post
+
 
 @pytest.mark.asyncio
 async def test_brand_sentiment_top_posts_shape():
@@ -210,6 +217,7 @@ async def test_brand_sentiment_top_posts_shape():
     if row["top_posts"]:
         post = row["top_posts"][0]
         assert "title" in post
+        assert "body" in post
         assert "url" in post
         assert "sentiment" in post
 

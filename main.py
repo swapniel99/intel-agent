@@ -132,8 +132,8 @@ async def _fetch_twitter_api(brand: str, timeframe: str, limit: int = 50) -> lis
     tweets = data.get("data") or []
     return [
         {
-            "title": t.get("text", "")[:280],
-            "body": "",
+            "title": (t.get("text", "")[:80] + "...") if len(t.get("text", "")) > 80 else t.get("text", ""),
+            "body": t.get("text", ""),
             "url": f"https://x.com/i/web/status/{t['id']}",
             "score": t.get("public_metrics", {}).get("like_count", 0),
         }
@@ -161,12 +161,13 @@ def _score_sentiment(texts: list[str]) -> tuple[dict, list[str]]:
     return aggregate, labels
 
 
-def _bucket_top_posts(items: list[dict], labels: list[str], title_key: str = "title", url_key: str = "url", score_key: str = "score", n: int = 5) -> list[dict]:
+def _bucket_top_posts(items: list[dict], labels: list[str], title_key: str = "title", url_key: str = "url", score_key: str = "score", body_key: str = "body", n: int = 15) -> list[dict]:
     """Return up to n posts per sentiment label (neg first), tagged with sentiment."""
     buckets: dict[str, list[dict]] = {"negative": [], "neutral": [], "positive": []}
     for item, label in zip(items, labels):
         buckets[label].append({
             "title": item.get(title_key, ""),
+            "body": item.get(body_key, ""),
             "url": item.get(url_key, ""),
             "score": item.get(score_key, 0),
             "sentiment": label,
@@ -229,7 +230,7 @@ async def fetch_brand_sentiment(
                 api_posts = await _fetch_twitter_api(brand, timeframe, limit=50)
                 if api_posts:
                     # API path — structured data, reliable
-                    texts = [p["title"] for p in api_posts]
+                    texts = [p["title"] + " " + p.get("body", "") for p in api_posts]
                     sentiment, labels = _score_sentiment(texts)
                     top = _bucket_top_posts(api_posts, labels, score_key="score")
                     results.append({
