@@ -189,12 +189,14 @@ async def fetch_brand_sentiment(
     brands: list[str],
     platforms: list[str] | str = "all",
     timeframe: str = "w",
+    _reasoning: str = "",
 ) -> list[dict]:
     """Fetch social media sentiment for pharma brands from Reddit, Twitter/X, and LinkedIn.
 
     brands: list of brand names e.g. ["PharmEasy", "Tata 1mg", "Apollo 247", "Netmeds"]
     platforms: list of platforms e.g. ["reddit", "twitter"] or a single string "reddit" | "twitter" | "linkedin" | "all"
     timeframe: "d" (day) | "w" (week, default) | "m" (month)
+    _reasoning: one sentence explaining why you are calling this tool now and what you expect to learn. Required.
 
     Returns: [{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]
     - top_posts contains a list of objects with 'title', 'body', 'url', 'score', and 'sentiment'. Use the 'body' text to perform deep qualitative analysis.
@@ -202,6 +204,8 @@ async def fetch_brand_sentiment(
     Sentiment score in [-1.0, 1.0]: positive=closer to 1, negative=closer to -1.
     Sentiment scored by RoBERTa model (twitter-roberta-base-sentiment-latest).
     """
+    if _reasoning:
+        logger.info(f"[reasoning] fetch_brand_sentiment: {_reasoning}")
     logger.info(f"Tool Call: fetch_brand_sentiment(brands={brands}, platforms={platforms!r}, timeframe='{timeframe}')")
 
     if isinstance(platforms, str):
@@ -283,16 +287,20 @@ def fetch_content_trends(
     topic: str,
     region_tier: str = "all",
     timeframe: str = "today 1-m",
+    _reasoning: str = "",
 ) -> list[dict]:
     """Fetch Google Trends interest for health topics by Indian city tier.
 
     topic: search topic e.g. "online pharmacy", "medicine delivery", "health insurance"
     region_tier: "tier1" | "tier2" | "tier3" | "all"
     timeframe: pytrends format — "today 1-m", "today 3-m", or "YYYY-MM-DD YYYY-MM-DD"
+    _reasoning: one sentence explaining why you are calling this tool now and what you expect to learn. Required.
 
     Returns: [{city, tier, interest_score, related_queries, related_topics}]
     interest_score is 0–100 (relative to peak in the period).
     """
+    if _reasoning:
+        logger.info(f"[reasoning] fetch_content_trends: {_reasoning}")
     logger.info(f"Tool Call: fetch_content_trends(topic='{topic}', region_tier='{region_tier}', timeframe='{timeframe}')")
 
     def _run_trends(pt: TrendReq) -> list[dict]:
@@ -375,11 +383,13 @@ def _ddgs_text_with_fallback(query: str, **kwargs) -> tuple[list[dict], str]:
 def fetch_search_presence(
     brands: list[str],
     keywords: list[str],
+    _reasoning: str = "",
 ) -> list[dict]:
     """Check where pharma brands appear in search results for given keywords.
 
     brands: e.g. ["PharmEasy", "Tata 1mg", "Apollo 247", "Netmeds"]
     keywords: e.g. ["buy medicine online", "online pharmacy india", "order medicines"]
+    _reasoning: one sentence explaining why you are calling this tool now and what you expect to learn. Required.
 
     Returns: [{keyword, brand, rank, present, url, title, snippet, source_backend, top_results}]
     rank: 1-indexed position in results; null if not found in top 10.
@@ -389,6 +399,8 @@ def fetch_search_presence(
     top_results: top-5 organic results [{rank, title, url, snippet}] for full context.
     Use keywords specific to India e.g. "buy medicines online india" not generic US terms.
     """
+    if _reasoning:
+        logger.info(f"[reasoning] fetch_search_presence: {_reasoning}")
     logger.info(f"Tool Call: fetch_search_presence(brands={brands}, keywords={keywords})")
 
     domain_map = {b.lower(): _BRAND_DOMAINS.get(b.lower(), b.lower().replace(" ", "") + ".in") for b in brands}
@@ -580,6 +592,7 @@ def render_dashboard(
     table: dict | None = None,
     badges: list[dict] | None = None,
     layout: str = "auto",
+    _reasoning: str = "",
 ) -> dict:
     """
     Render a dashboard. Always call this when finished — it is the only output surface.
@@ -618,9 +631,13 @@ def render_dashboard(
         auto: cards→article feed, chart-only→chart_focus, table-only→table_report, else→kpi_grid
         split: chart left + metrics column right, side by side.
 
+    _reasoning: one sentence explaining why you are calling this tool now and what data you are visualizing. Required.
+
     Returns {status: "dashboard_ready"}.
     """
     global _LAST_DASHBOARD_HTML
+    if _reasoning:
+        logger.info(f"[reasoning] render_dashboard: {_reasoning}")
     logger.info(
         f"Tool Call: render_dashboard(layout='{layout}', title='{title}', "
         f"cards={len(cards or [])}, metrics={len(metrics or [])}, "

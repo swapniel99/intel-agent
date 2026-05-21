@@ -4,7 +4,7 @@ import { OllamaProvider } from "./providers/ollama-provider.js";
 
 let MCP_URL = "http://localhost:8000/mcp";
 const GEMINI_MODEL_STORAGE = "gemini_model";
-const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 const API_KEY_STORAGE = "gemini_api_key";
 const MCP_SERVER_URL_STORAGE = "mcp_server_url";
 const THEME_STORAGE = "theme";
