@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Dashboard rendering: `render_dashboard` → backend populates `_LAST_DASHBOARD_HTML` → iframe loads `http://localhost:8000/dashboard?theme=...`
 - `background.js` opens extension window on icon click
 - `genai.js` is bundled `@google/genai` SDK (no build step)
-- Settings stored in `chrome.storage.local`: Gemini API key, MCP server URL, provider (`gemini`|`ollama`), Ollama URL/model, theme, Gemini model
+- Settings stored in `chrome.storage.local`: Gemini API key, MCP server URL, provider (`gemini`|`ollama`), Ollama URL/model, Ollama thinking toggle, theme, Gemini model
 
 **Defaults:**
 - Gemini model: `gemini-3.1-flash-lite` (change via inline settings panel)
@@ -54,7 +54,7 @@ uv sync
 ./.venv/bin/python main.py
 TWITTER_BEARER_TOKEN=xxx ./.venv/bin/python main.py   # with Twitter API
 
-# Tests — self-contained, no running server needed (spawn stdio subprocess internally)
+# Tests — self-contained; spawn stdio subprocess or use TestClient (no external server needed)
 uv run pytest test_mcp_server.py -v
 
 # Run single test
@@ -75,6 +75,7 @@ TWITTER_BEARER_TOKEN=xxx uv run pytest test_mcp_server.py -v
 ## Key Constraints
 
 - Python environment: **use `./.venv/bin/python`** (Python 3.14 pinned in `.python-version`)
+- `pytrends-modern[selenium]` is a dep — requires a browser/chromedriver available in PATH for Google Trends scraping; trends calls silently degrade without it
 - HuggingFace model cold-starts may download ~500MB; set `TRANSFORMERS_CACHE` to control location
 - Gemini tool binding is dynamic — `index.js` POSTs `tools/list` at init, converts to `functionDeclarations`
 - MCP session auto-recovery: retry on session loss, 20s timeout, up to 2 attempts with exponential backoff

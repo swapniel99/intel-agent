@@ -1,4 +1,5 @@
 import json
+import time
 import os
 import logging
 from datetime import datetime, timedelta, timezone
@@ -48,6 +49,14 @@ _BRAND_DOMAINS: dict[str, str] = {
 }
 
 _REDDIT_TIMEFRAME: dict[str, str] = {"d": "day", "w": "week", "m": "month"}
+
+_trends_client: TrendReq | None = None
+
+def _get_trends_client() -> TrendReq:
+    global _trends_client
+    if _trends_client is None:
+        _trends_client = TrendReq(hl="en-IN", tz=330, retries=3, backoff_factor=1.0, timeout=(10, 25))
+    return _trends_client
 
 # Brand-specific Twitter search queries — disambiguates short/ambiguous names
 _TWITTER_BRAND_QUERY: dict[str, str] = {
@@ -329,14 +338,18 @@ def fetch_content_trends(
         results.sort(key=lambda x: x["interest_score"], reverse=True)
         return results if results else [{"status": f"No cities matched tier '{region_tier}'."}]
 
-    try:
-        pt = TrendReq(hl="en-IN", tz=330, retries=2, backoff_factor=0.5, timeout=(10, 25))
-        return _run_trends(pt)
-    except Exception as e:
-        err = str(e)
-        if "429" in err or "Too Many Requests" in err:
-            return [{"status": "Google Trends rate-limited. Wait 60s and retry."}]
-        return [{"status": f"fetch_content_trends error: {err}"}]
+    for attempt in range(3):
+        try:
+            return _run_trends(_get_trends_client())
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "Too Many Requests" in err:
+                if attempt < 2:
+                    time.sleep(30 * (attempt + 1))
+                    continue
+                return [{"status": "Google Trends rate-limited. Wait 60s and retry."}]
+            return [{"status": f"fetch_content_trends error: {err}"}]
+    return [{"status": "Google Trends rate-limited after retries."}]
 
 
 # Order: yahoo (Bing-powered, good India coverage) → yandex (weak India)
