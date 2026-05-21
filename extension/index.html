@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -54,7 +55,11 @@
       --link: #0969da;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
@@ -94,7 +99,10 @@
       box-shadow: 0 0 8px var(--ok);
     }
 
-    header .dot.offline { background: var(--err); box-shadow: 0 0 8px var(--err); }
+    header .dot.offline {
+      background: var(--err);
+      box-shadow: 0 0 8px var(--err);
+    }
 
     .icon-btn {
       background: none;
@@ -110,13 +118,13 @@
       justify-content: center;
     }
 
-    .icon-btn:hover { 
+    .icon-btn:hover {
       background: var(--bg-input);
       border-color: var(--border);
       color: var(--text-strong);
     }
-    
-    .icon-btn.active { 
+
+    .icon-btn.active {
       background: var(--bg-input);
       border-color: var(--accent);
       color: var(--accent);
@@ -134,7 +142,7 @@
       margin: 0 auto;
       width: 100%;
       border-radius: 0 0 12px 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       position: absolute;
       top: 60px;
       left: 50%;
@@ -142,7 +150,9 @@
       z-index: 100;
     }
 
-    #settings-panel.visible { display: flex; }
+    #settings-panel.visible {
+      display: flex;
+    }
 
     #settings-panel label {
       font-size: 12px;
@@ -164,7 +174,9 @@
       transition: border-color 0.2s;
     }
 
-    #settings-panel input:focus { border-color: var(--accent); }
+    #settings-panel input:focus {
+      border-color: var(--accent);
+    }
 
     #settings-panel .row {
       display: flex;
@@ -174,7 +186,7 @@
 
     #save-settings-btn {
       background: var(--accent-btn);
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 6px;
       color: #fff;
       cursor: pointer;
@@ -184,9 +196,16 @@
       transition: background 0.2s;
     }
 
-    #save-settings-btn:hover { background: var(--accent-btn-hover); }
+    #save-settings-btn:hover {
+      background: var(--accent-btn-hover);
+    }
 
-    #key-status { font-size: 12px; color: var(--ok); min-height: 18px; margin-top: 4px; }
+    #key-status {
+      font-size: 12px;
+      color: var(--ok);
+      min-height: 18px;
+      margin-top: 4px;
+    }
 
     #settings-panel select {
       width: 100%;
@@ -202,11 +221,20 @@
       appearance: none;
     }
 
-    #settings-panel select:focus { border-color: var(--accent); }
+    #settings-panel select:focus {
+      border-color: var(--accent);
+    }
 
-    .setting-group { display: flex; flex-direction: column; }
+    .setting-group {
+      display: flex;
+      flex-direction: column;
+    }
 
-    #ollama-settings, #gemini-settings { flex-direction: column; gap: 16px; }
+    #ollama-settings,
+    #gemini-settings {
+      flex-direction: column;
+      gap: 16px;
+    }
 
     /* ── Main content ── */
     #main-view {
@@ -267,8 +295,17 @@
       padding: 40px;
     }
 
-    #empty-state svg { opacity: 0.3; width: 64px; height: 64px; }
-    #empty-state p { font-size: 16px; max-width: 400px; line-height: 1.6; }
+    #empty-state svg {
+      opacity: 0.3;
+      width: 64px;
+      height: 64px;
+    }
+
+    #empty-state p {
+      font-size: 16px;
+      max-width: 400px;
+      line-height: 1.6;
+    }
 
     #prefab-frame {
       width: 100%;
@@ -379,8 +416,13 @@
       overflow-y: auto;
     }
 
-    #prompt-input:focus { border-color: var(--accent); }
-    #prompt-input::placeholder { color: var(--text-faint); }
+    #prompt-input:focus {
+      border-color: var(--accent);
+    }
+
+    #prompt-input::placeholder {
+      color: var(--text-faint);
+    }
 
     #run-btn {
       background: var(--accent-btn);
@@ -396,9 +438,19 @@
       flex-shrink: 0;
     }
 
-    #run-btn:hover { background: var(--accent-btn-hover); }
-    #run-btn:active { transform: translateY(1px); }
-    #run-btn:disabled { background: var(--btn-disabled); color: var(--text-faint); cursor: not-allowed; }
+    #run-btn:hover {
+      background: var(--accent-btn-hover);
+    }
+
+    #run-btn:active {
+      transform: translateY(1px);
+    }
+
+    #run-btn:disabled {
+      background: var(--btn-disabled);
+      color: var(--text-faint);
+      cursor: not-allowed;
+    }
 
     #prompt-actions {
       display: flex;
@@ -406,7 +458,8 @@
       justify-content: flex-end;
     }
 
-    #undo-btn, #clear-btn {
+    #undo-btn,
+    #clear-btn {
       background: transparent;
       border: 1px solid var(--border);
       border-radius: 4px;
@@ -418,13 +471,15 @@
       flex-shrink: 0;
     }
 
-    #undo-btn:hover:not(:disabled), #clear-btn:hover:not(:disabled) {
+    #undo-btn:hover:not(:disabled),
+    #clear-btn:hover:not(:disabled) {
       color: var(--text);
       border-color: var(--accent);
       background: var(--bg-input);
     }
 
-    #undo-btn:disabled, #clear-btn:disabled {
+    #undo-btn:disabled,
+    #clear-btn:disabled {
       opacity: 0.4;
       cursor: not-allowed;
     }
@@ -463,17 +518,35 @@
       min-height: 16px;
     }
 
-    #status-bar.error { color: var(--err); }
-    #status-bar.success { color: var(--ok); }
+    #status-bar.error {
+      color: var(--err);
+    }
+
+    #status-bar.success {
+      color: var(--ok);
+    }
 
     /* Scrollbar styling */
-    ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
 
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-faint);
+    }
   </style>
 </head>
+
 <body>
 
   <header>
@@ -502,7 +575,7 @@
       </div>
       <div class="setting-group">
         <label for="gemini-model-input">Model</label>
-        <input id="gemini-model-input" type="text" placeholder="gemini-3-flash-preview" />
+        <input id="gemini-model-input" type="text" placeholder="gemini-3.1-flash-lite" />
       </div>
     </div>
     <div id="ollama-settings" style="display:none; flex-direction:column; gap:16px;">
@@ -524,8 +597,8 @@
       <input id="mcp-url-input" type="text" placeholder="http://localhost:8000" />
     </div>
     <div class="row">
-        <button id="save-settings-btn">Save Settings</button>
-        <div id="key-status"></div>
+      <button id="save-settings-btn">Save Settings</button>
+      <div id="key-status"></div>
     </div>
   </div>
 
@@ -535,7 +608,7 @@
       <div id="prefab-container">
         <div id="empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M4 6h16M4 12h16M4 18h7" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 6h16M4 12h16M4 18h7" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
           <p>Your curated research dashboard will appear here.<br>Enter a prompt on the right to begin.</p>
         </div>
@@ -560,10 +633,8 @@
           <button class="preset-btn" id="preset-analysis">Full Analysis</button>
         </div>
         <div id="prompt-container">
-          <textarea
-            id="prompt-input"
-            placeholder='e.g. "Compare PharmEasy vs Tata 1mg vs Apollo 247 sentiment on Reddit this week."'
-          ></textarea>
+          <textarea id="prompt-input"
+            placeholder='e.g. "Compare PharmEasy vs Tata 1mg vs Apollo 247 sentiment on Reddit this week."'></textarea>
           <button id="run-btn" disabled>Send</button>
         </div>
         <div id="prompt-actions">
@@ -577,4 +648,5 @@
 
   <script type="module" src="index.js"></script>
 </body>
+
 </html>

@@ -21,7 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Settings stored in `chrome.storage.local`: Gemini API key, MCP server URL, provider (`gemini`|`ollama`), Ollama URL/model, theme, Gemini model
 
 **Defaults:**
-- Gemini model: `gemini-3-flash-preview` (change via inline settings panel)
+- Gemini model: `gemini-3.1-flash-lite` (change via inline settings panel)
 - Ollama URL: `http://localhost:11434`, model: `gemma4:26b`
 - MCP URL: `http://localhost:8000/mcp`
 
