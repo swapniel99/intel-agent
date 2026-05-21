@@ -231,7 +231,7 @@ async def fetch_brand_sentiment(
 
         if do_reddit:
             try:
-                posts = await _fetch_reddit_sentiment(brand, timeframe, limit=25)
+                posts = await _fetch_reddit_sentiment(brand, timeframe, limit=50 if timeframe == "m" else 25)
                 texts = [p["title"] + " " + p["body"] for p in posts]
                 sentiment, labels = _score_sentiment(texts)
                 top = _bucket_top_posts(posts, labels, score_key="score")

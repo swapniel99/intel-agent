@@ -115,6 +115,8 @@ intel-agent/
 ├── test_mcp_server.py         # Self-contained integration tests (stdio transport)
 ├── pyproject.toml             # deps: fastmcp, uvicorn, httpx, prefab-ui, ddgs, pytrends-modern, torch, transformers, python-dotenv
 ├── .env                       # TWITTER_BEARER_TOKEN (gitignored)
+├── PLAN.md                    # Completed implementation history — not active, do not use as reference
+├── eval_prompt.md             # Unrelated utility prompt (prompt evaluator) — not part of this project
 ├── graphify-out/              # Knowledge graph
 └── extension/
     ├── manifest.json          # MV3 — host: localhost:8000, localhost:11434, *.googleapis.com, cdn.jsdelivr.net
@@ -127,6 +129,8 @@ intel-agent/
         ├── gemini-provider.js # Wraps @google/genai with googleSearch + forceFinish logic
         └── ollama-provider.js # OpenAI-compatible client + Gemini→OpenAI history converter
 ```
+
+> **README.md is stale** — still describes old tools (`fetch_tech_news`, `manage_local_library`) from before the pharma marketing intel pivot. Ignore it; `CLAUDE.md` is authoritative.
 
 ## graphify
 
