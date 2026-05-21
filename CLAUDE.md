@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**IntelAgent** is a pharma-market intelligence assistant (Chrome Extension + local Python backend) that fetches brand sentiment, search presence, and content trends, then renders a curated dashboard.
+**IntelAgent** is a pharma-market intelligence assistant (Chrome Extension + local Python backend) that fetches brand sentiment and search presence, then renders a curated dashboard.
 
-**Current branch (`pharmeasy`):** focused on marketing intel tools. `fetch_tech_news` and `manage_local_library` do NOT exist here; those are on `main`.
+**Current branch (`google_trends`):** focused on marketing intel tools. `fetch_tech_news` and `manage_local_library` do NOT exist here; those are on `main`. `fetch_content_trends` is commented out (Google Trends client singleton `_get_trends_client()` still present in `main.py`).
 
 ## Architecture
 
@@ -32,11 +32,10 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 
 **HuggingFace model loaded at startup** — `cardiffnlp/twitter-roberta-base-sentiment-latest` loaded via `transformers.pipeline` before any request. First cold start downloads the model (~500MB); subsequent starts load from cache.
 
-**4 MCP tools:**
+**3 MCP tools:**
 | Tool | Details |
 |---|---|
 | `fetch_brand_sentiment` | Reddit + Twitter/X + LinkedIn sentiment for pharma brands. Uses RoBERTa for scoring. Twitter: API v2 if `TWITTER_BEARER_TOKEN` set, else DDGS fallback. Returns `[{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]`. |
-| `fetch_content_trends` | Google Trends interest by Indian city/tier. Params: `topic`, `region_tier` (`tier1`\|`tier2`\|`tier3`\|`all`), `timeframe`. Returns `[{city, tier, interest_score, related_queries, related_topics}]`. |
 | `fetch_search_presence` | DuckDuckGo rank check for brands across search keywords. DDGS backend chain: `yahoo → yandex → auto`. Returns `[{keyword, brand, rank, present, url, title, snippet, source_backend, top_results}]`. |
 | `render_dashboard` | Compiles research into rich HTML. 6 chart types (Bar, Line, Area, Pie, Radar, Radial), metrics, tables, layouts. Returns `{"status": "dashboard_ready"}`. |
 
@@ -76,6 +75,8 @@ TWITTER_BEARER_TOKEN=xxx uv run pytest test_mcp_server.py -v
 
 - Python environment: **use `./.venv/bin/python`** (Python 3.14 pinned in `.python-version`)
 - `pytrends-modern[selenium]` is a dep — requires a browser/chromedriver available in PATH for Google Trends scraping; trends calls silently degrade without it
+- **TODO:** `fetch_content_trends` commented out — Google Trends scraping unreliable; fix requires migrating to paid [SerpAPI](https://serpapi.com/google-trends-api) (`serpapi` or `google-search-results` pkg). Client singleton `_get_trends_client()` preserved in `main.py` as scaffold.
+- **TODO:** LinkedIn arm of `fetch_brand_sentiment` ([main.py:275-289](main.py#L275-L289)) is unreliable — scrapes `site:linkedin.com/posts` via DDGS; LinkedIn posts barely search-indexed, frequently hits `insufficient_data` (<3 posts), only title+snippet (weak sentiment signal). No official LinkedIn API supports third-party brand-mention search (Marketing/Community APIs are scoped to owned org pages only). Fix requires a paid scraper with post-content search — Bright Data LinkedIn dataset/scraper preferred (Apify post-search actors as cheaper fallback). Otherwise drop LinkedIn and rely on Reddit + Twitter.
 - HuggingFace model cold-starts may download ~500MB; set `TRANSFORMERS_CACHE` to control location
 - Gemini tool binding is dynamic — `index.js` POSTs `tools/list` at init, converts to `functionDeclarations`
 - MCP session auto-recovery: retry on session loss, 20s timeout, up to 2 attempts with exponential backoff
@@ -98,7 +99,6 @@ TWITTER_BEARER_TOKEN=xxx uv run pytest test_mcp_server.py -v
 
 **Tool Return Schemas:**
 - `fetch_brand_sentiment`: `[{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]` or `[{brand, platform, status}]` on failure
-- `fetch_content_trends`: `[{city, tier, interest_score, related_queries, related_topics}]` or `[{status}]`
 - `fetch_search_presence`: `[{keyword, brand, rank, present, url, title, snippet, source_backend, top_results}]`
 - `render_dashboard`: `{"status": "dashboard_ready"}` (backend caches HTML)
 
@@ -106,7 +106,7 @@ TWITTER_BEARER_TOKEN=xxx uv run pytest test_mcp_server.py -v
 
 ```
 intel-agent/
-├── main.py                    # FastMCP server + 4 tools + /dashboard route
+├── main.py                    # FastMCP server + 3 tools + /dashboard route
 ├── test_mcp_server.py         # Self-contained integration tests (stdio transport)
 ├── pyproject.toml             # deps: fastmcp, uvicorn, httpx, prefab-ui, ddgs, pytrends-modern, torch, transformers, python-dotenv
 ├── .env                       # TWITTER_BEARER_TOKEN (gitignored)
