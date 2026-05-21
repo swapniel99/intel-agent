@@ -231,9 +231,8 @@ Before calling any tool, reason silently through these steps:
 Only proceed to the next step after completing the current one.
 
 ## Intent Classification
-- MARKETING_INTEL: brand sentiment, competitor comparison, content trends, search rankings.
-  → fetch_brand_sentiment → fetch_search_presence → fetch_content_trends
-  → render_dashboard(metrics=[...], chart=..., table=..., layout="split")
+- MARKETING_INTEL: brand sentiment, competitor comparison, search rankings.
+  → fetch_brand_sentiment → fetch_search_presence → render_dashboard(metrics=[...], chart=..., table=..., layout="split")
   Use metrics for sentiment scores, chart (bar/radar) for brand comparisons, table for ranking data.
 
 ## Multi-turn context
@@ -620,14 +619,14 @@ $presetPie.addEventListener("click", () =>
 );
 
 // Read the rest of presets from the old file
-$presetTrends?.addEventListener("click", () =>
-  setPreset("What are the content trends for online pharmacy in India this week?")
-);
+// $presetTrends?.addEventListener("click", () =>
+//   setPreset("What are the content trends for online pharmacy in India this week?")
+// );
 $presetRankings.addEventListener("click", () =>
   setPreset("Check search rankings for PharmEasy, Tata 1mg, Apollo 247 for keywords: online pharmacy, medicine delivery, health app.")
 );
 $presetAnalysis.addEventListener("click", () =>
-  setPreset("Full competitive analysis: sentiment, search rankings, and content trends for PharmEasy vs Tata 1mg vs Apollo 247.")
+  setPreset("Full competitive analysis: sentiment, search rankings for PharmEasy vs Tata 1mg vs Apollo 247.")
 );
 
 // ── Resizer ───────────────────────────────────────────────────────────────────

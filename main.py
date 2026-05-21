@@ -291,65 +291,65 @@ async def fetch_brand_sentiment(
     return results if results else [{"status": "No results found for the given brands and platforms."}]
 
 
-@mcp.tool()
-def fetch_content_trends(
-    topic: str,
-    region_tier: str = "all",
-    timeframe: str = "today 1-m",
-    _reasoning: str = "",
-) -> list[dict]:
-    """Fetch Google Trends interest for health topics by Indian city tier.
+# @mcp.tool()
+# def fetch_content_trends(
+#     topic: str,
+#     region_tier: str = "all",
+#     timeframe: str = "today 1-m",
+#     _reasoning: str = "",
+# ) -> list[dict]:
+#     """Fetch Google Trends interest for health topics by Indian city tier.
 
-    topic: search topic e.g. "online pharmacy", "medicine delivery", "health insurance"
-    region_tier: "tier1" | "tier2" | "tier3" | "all"
-    timeframe: pytrends format — "today 1-m", "today 3-m", or "YYYY-MM-DD YYYY-MM-DD"
-    _reasoning: one sentence explaining why you are calling this tool now and what you expect to learn. Required.
+#     topic: search topic e.g. "online pharmacy", "medicine delivery", "health insurance"
+#     region_tier: "tier1" | "tier2" | "tier3" | "all"
+#     timeframe: pytrends format — "today 1-m", "today 3-m", or "YYYY-MM-DD YYYY-MM-DD"
+#     _reasoning: one sentence explaining why you are calling this tool now and what you expect to learn. Required.
 
-    Returns: [{city, tier, interest_score, related_queries, related_topics}]
-    interest_score is 0–100 (relative to peak in the period).
-    """
-    if _reasoning:
-        logger.info(f"[reasoning] fetch_content_trends: {_reasoning}")
-    logger.info(f"Tool Call: fetch_content_trends(topic='{topic}', region_tier='{region_tier}', timeframe='{timeframe}')")
+#     Returns: [{city, tier, interest_score, related_queries, related_topics}]
+#     interest_score is 0–100 (relative to peak in the period).
+#     """
+#     if _reasoning:
+#         logger.info(f"[reasoning] fetch_content_trends: {_reasoning}")
+#     logger.info(f"Tool Call: fetch_content_trends(topic='{topic}', region_tier='{region_tier}', timeframe='{timeframe}')")
 
-    def _run_trends(pt: TrendReq) -> list[dict]:
-        pt.build_payload([topic], geo="IN", timeframe=timeframe)
-        df = pt.interest_by_region(resolution="CITY", inc_low_vol=True)
-        if df is None or df.empty:
-            return [{"status": f"No Google Trends data for '{topic}' in India."}]
+#     def _run_trends(pt: TrendReq) -> list[dict]:
+#         pt.build_payload([topic], geo="IN", timeframe=timeframe)
+#         df = pt.interest_by_region(resolution="CITY", inc_low_vol=True)
+#         if df is None or df.empty:
+#             return [{"status": f"No Google Trends data for '{topic}' in India."}]
 
-        related_q = pt.related_queries().get(topic, {})
-        related_t = pt.related_topics().get(topic, {})
-        top_q_df = related_q.get("top")
-        top_queries = top_q_df.head(5)["query"].tolist() if top_q_df is not None and not top_q_df.empty else []
-        top_t_df = related_t.get("top")
-        top_topics = top_t_df.head(5)["topic_title"].tolist() if top_t_df is not None and not top_t_df.empty else []
+#         related_q = pt.related_queries().get(topic, {})
+#         related_t = pt.related_topics().get(topic, {})
+#         top_q_df = related_q.get("top")
+#         top_queries = top_q_df.head(5)["query"].tolist() if top_q_df is not None and not top_q_df.empty else []
+#         top_t_df = related_t.get("top")
+#         top_topics = top_t_df.head(5)["topic_title"].tolist() if top_t_df is not None and not top_t_df.empty else []
 
-        results = []
-        for city, row in df.iterrows():
-            score = int(row.iloc[0])
-            if score == 0:
-                continue
-            tier = _city_tier(str(city))
-            if region_tier != "all" and tier != region_tier:
-                continue
-            results.append({"city": str(city), "tier": tier, "interest_score": score,
-                             "related_queries": top_queries, "related_topics": top_topics})
-        results.sort(key=lambda x: x["interest_score"], reverse=True)
-        return results if results else [{"status": f"No cities matched tier '{region_tier}'."}]
+#         results = []
+#         for city, row in df.iterrows():
+#             score = int(row.iloc[0])
+#             if score == 0:
+#                 continue
+#             tier = _city_tier(str(city))
+#             if region_tier != "all" and tier != region_tier:
+#                 continue
+#             results.append({"city": str(city), "tier": tier, "interest_score": score,
+#                              "related_queries": top_queries, "related_topics": top_topics})
+#         results.sort(key=lambda x: x["interest_score"], reverse=True)
+#         return results if results else [{"status": f"No cities matched tier '{region_tier}'."}]
 
-    for attempt in range(3):
-        try:
-            return _run_trends(_get_trends_client())
-        except Exception as e:
-            err = str(e)
-            if "429" in err or "Too Many Requests" in err:
-                if attempt < 2:
-                    time.sleep(30 * (attempt + 1))
-                    continue
-                return [{"status": "Google Trends rate-limited. Wait 60s and retry."}]
-            return [{"status": f"fetch_content_trends error: {err}"}]
-    return [{"status": "Google Trends rate-limited after retries."}]
+#     for attempt in range(3):
+#         try:
+#             return _run_trends(_get_trends_client())
+#         except Exception as e:
+#             err = str(e)
+#             if "429" in err or "Too Many Requests" in err:
+#                 if attempt < 2:
+#                     time.sleep(30 * (attempt + 1))
+#                     continue
+#                 return [{"status": "Google Trends rate-limited. Wait 60s and retry."}]
+#             return [{"status": f"fetch_content_trends error: {err}"}]
+#     return [{"status": "Google Trends rate-limited after retries."}]
 
 
 # Order: yahoo (Bing-powered, good India coverage) → yandex (weak India)
