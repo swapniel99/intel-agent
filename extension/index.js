@@ -40,9 +40,7 @@ const $clearBtn = document.getElementById("clear-btn");
 const $presetSentiment = document.getElementById("preset-sentiment");
 const $presetRadar = document.getElementById("preset-radar");
 const $presetPie = document.getElementById("preset-pie");
-const $presetTrends = document.getElementById("preset-trends");
 const $presetRankings = document.getElementById("preset-rankings");
-const $presetAnalysis = document.getElementById("preset-analysis");
 const $providerSelect = document.getElementById("provider-select");
 const $ollamaSettings = document.getElementById("ollama-settings");
 const $ollamaUrlInput = document.getElementById("ollama-url-input");
@@ -618,15 +616,8 @@ $presetPie.addEventListener("click", () =>
   setPreset("What is the sentiment breakdown for PharmEasy on Reddit this month?")
 );
 
-// Read the rest of presets from the old file
-// $presetTrends?.addEventListener("click", () =>
-//   setPreset("What are the content trends for online pharmacy in India this week?")
-// );
 $presetRankings.addEventListener("click", () =>
   setPreset("Check search rankings for PharmEasy, Tata 1mg, Apollo 247 for keywords: online pharmacy, medicine delivery, health app.")
-);
-$presetAnalysis.addEventListener("click", () =>
-  setPreset("Full competitive analysis: sentiment, search rankings for PharmEasy vs Tata 1mg vs Apollo 247.")
 );
 
 // ── Resizer ───────────────────────────────────────────────────────────────────
