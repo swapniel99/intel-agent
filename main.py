@@ -15,6 +15,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
+from starlette.staticfiles import StaticFiles
 
 from prefab_ui import PrefabApp
 from prefab_ui.components import Column, Muted
@@ -834,4 +835,9 @@ if __name__ == "__main__":
     else:
         import uvicorn
         app = mcp.http_app(transport="streamable-http", middleware=_cors_middleware)
+        # Serve the extension UI as a hosted website at the server root.
+        # Mounted last — exact routes (/mcp, /dashboard) are matched first;
+        # html=True serves index.html for the root path.
+        _extension_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extension")
+        app.mount("/", StaticFiles(directory=_extension_dir, html=True), name="webapp")
         uvicorn.run(app, host="0.0.0.0", port=8000)

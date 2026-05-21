@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **IntelAgent** is a pharma-market intelligence assistant (Chrome Extension + local Python backend) that fetches brand sentiment and search presence, then renders a curated dashboard.
 
-**Current branch (`google_trends`):** focused on marketing intel tools. `fetch_tech_news` and `manage_local_library` do NOT exist here; those are on `main`. `fetch_content_trends` is commented out (Google Trends client singleton `_get_trends_client()` still present in `main.py`).
+**Scope:** marketing intel tools only — `fetch_brand_sentiment`, `fetch_search_presence`, `render_dashboard`. `fetch_content_trends` is commented out in [main.py](main.py) (Google Trends scraping unreliable); its singleton `_get_trends_client()` is kept as scaffold. `fetch_tech_news` / `manage_local_library` belong to other branches, not here.
 
 ## Architecture
 
@@ -28,7 +28,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Agentic loop:** MAX_TURNS=12, forceFinish at turn 8 (constrains tools to `render_dashboard` only)
 
 ### Backend (Python 3.14 + FastMCP)
-Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves last rendered HTML.
+Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves last rendered HTML. `extension/` is mounted as a `StaticFiles` site at `/` (HTTP mode only) — same UI served as a no-install website. Exact routes `/mcp` + `/dashboard` matched before the static mount.
+
+**Dual-target frontend:** the `extension/` UI runs both as a Chrome extension and as a hosted website. `extension/storage.js` shims `chrome.storage.local` → `localStorage` and exposes `DEFAULT_SERVER_URL` (same-origin off-extension, `localhost:8000` packaged). `background.js`/`manifest.json` are extension-only and ignored by the website.
 
 **HuggingFace model loaded at startup** — `cardiffnlp/twitter-roberta-base-sentiment-latest` loaded via `transformers.pipeline` before any request. First cold start downloads the model (~500MB); subsequent starts load from cache.
 
@@ -49,9 +51,10 @@ Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/
 # Backend — one-time setup
 uv sync
 
-# Backend — run server (Twitter token optional — enables API v2; falls back to DDGS)
+# Backend — run HTTP server on :8000 (Twitter token optional — enables API v2; falls back to DDGS)
 ./.venv/bin/python main.py
 TWITTER_BEARER_TOKEN=xxx ./.venv/bin/python main.py   # with Twitter API
+./.venv/bin/python main.py stdio                      # stdio MCP transport (no HTTP, no /dashboard route)
 
 # Tests — self-contained; spawn stdio subprocess or use TestClient (no external server needed)
 uv run pytest test_mcp_server.py -v
@@ -63,7 +66,9 @@ uv run pytest test_mcp_server.py::test_render_basic_dashboard -v
 TWITTER_BEARER_TOKEN=xxx uv run pytest test_mcp_server.py -v
 ```
 
-**Frontend:** Load unpacked from `chrome://extensions/` → "Load unpacked" → select `extension/`
+**Frontend (extension):** Load unpacked from `chrome://extensions/` → "Load unpacked" → select `extension/`
+
+**Frontend (website):** start the backend in HTTP mode, then open `http://localhost:8000/` — no install. Each user supplies their own Gemini API key (stored in browser `localStorage`).
 
 **`.env` file:** create at repo root with `TWITTER_BEARER_TOKEN=...` (loaded via `python-dotenv` at startup)
 
@@ -112,9 +117,10 @@ intel-agent/
 ├── .env                       # TWITTER_BEARER_TOKEN (gitignored)
 ├── graphify-out/              # Knowledge graph
 └── extension/
-    ├── manifest.json          # MV3 — host: localhost:8000, localhost:11434, googleapis.com
+    ├── manifest.json          # MV3 — host: localhost:8000, localhost:11434, *.googleapis.com, cdn.jsdelivr.net
     ├── index.html / index.js  # Main UI + agentic loop
-    ├── background.js          # Opens window on icon click
+    ├── storage.js             # chrome.storage ↔ localStorage shim (dual-target: extension + website)
+    ├── background.js          # Opens window on icon click (extension-only)
     ├── options.html / options.js  # API key settings page
     ├── genai.js               # Bundled @google/genai ES module
     └── providers/

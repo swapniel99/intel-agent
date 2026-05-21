@@ -1,16 +1,16 @@
 # Graph Report - intel-agent  (2026-05-21)
 
 ## Corpus Check
-- 16 files · ~100,698 words
+- 17 files · ~101,077 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1001 nodes · 3225 edges · 93 communities (69 shown, 24 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 13 edges (avg confidence: 0.88)
+- 1015 nodes · 3241 edges · 85 communities (71 shown, 14 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 14 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8dca2d53`
+- Built from commit: `b776ae88`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -93,16 +93,8 @@
 - [[_COMMUNITY_Community 77|Community 77]]
 - [[_COMMUNITY_Community 78|Community 78]]
 - [[_COMMUNITY_Community 79|Community 79]]
-- [[_COMMUNITY_Community 80|Community 80]]
 - [[_COMMUNITY_Community 81|Community 81]]
-- [[_COMMUNITY_Community 82|Community 82]]
-- [[_COMMUNITY_Community 83|Community 83]]
-- [[_COMMUNITY_Community 84|Community 84]]
 - [[_COMMUNITY_Community 85|Community 85]]
-- [[_COMMUNITY_Community 86|Community 86]]
-- [[_COMMUNITY_Community 87|Community 87]]
-- [[_COMMUNITY_Community 88|Community 88]]
-- [[_COMMUNITY_Community 89|Community 89]]
 - [[_COMMUNITY_Community 90|Community 90]]
 - [[_COMMUNITY_Community 91|Community 91]]
 
@@ -130,83 +122,83 @@
 - `Fallback to saved_articles.json on network failure` --references--> `saved_articles.json Local Library`  [INFERRED]
   main.py → saved_articles.json
 
-## Communities (93 total, 24 thin omitted)
+## Communities (85 total, 14 thin omitted)
 
 ### Community 0 - "MCP Server Testing"
 Cohesion: 0.08
 Nodes (71): _call(), _parse(), MCP server integration tests. Requires server running at http://localhost:8000., test_dashboard_route_dark(), test_dashboard_route_light(), test_fetch_all_sources(), test_fetch_dev(), test_fetch_hn() (+63 more)
 
 ### Community 1 - "GenAI SDK Internal Logic"
-Cohesion: 0.04
-Nodes (62): blobToMldev(), candidateFromMldev(), citationMetadataFromMldev(), createFileParametersToMldev(), createTuningJobConfigToMldev(), createTuningJobParametersPrivateToMldev(), deleteCachedContentResponseFromMldev(), deleteCachedContentResponseFromVertex() (+54 more)
+Cohesion: 0.05
+Nodes (55): blobToMldev(), blobToMldev$2(), cancelTuningJobResponseFromMldev(), cancelTuningJobResponseFromVertex(), candidateFromMldev(), citationMetadataFromMldev(), countTokensResponseFromMldev(), countTokensResponseFromVertex() (+47 more)
 
 ### Community 2 - "MLDev & Vertex Response Mapping"
 Cohesion: 0.15
 Nodes (15): background.js Service Worker, callMcpTool, checkServer, Gemini googleSearch Native Tool, sidepanel.html Side Panel UI, initGemini, loadMcpTools, loadSettings (+7 more)
 
 ### Community 3 - "IntelAgent Core Components"
-Cohesion: 0.07
-Nodes (29): audioChunk(), close(), createFunctionResponsePartFromBase64(), createFunctionResponsePartFromUri(), createPartFromCodeExecutionResult(), createPartFromFunctionCall(), createPartFromUri(), data() (+21 more)
+Cohesion: 0.05
+Nodes (52): batchJobDestinationFromMldev(), batchJobDestinationFromVertex(), batchJobFromMldev(), batchJobFromVertex(), batchJobSourceFromVertex(), close(), codeExecutionResult(), createFunctionResponsePartFromBase64() (+44 more)
 
 ### Community 4 - "Vertex AI Job Management"
-Cohesion: 0.04
-Nodes (59): blobToMldev$4(), cancelTuningJobResponseFromMldev(), cancelTuningJobResponseFromVertex(), candidateFromMldev$1(), citationMetadataFromMldev$1(), computeTokensResponseFromVertex(), contentEmbeddingFromVertex(), contentEmbeddingStatisticsFromVertex() (+51 more)
+Cohesion: 0.05
+Nodes (54): blobToMldev$1(), blobToMldev$3(), candidateFromMldev$1(), citationMetadataFromMldev$1(), computeTokensResponseFromVertex(), contentEmbeddingFromVertex(), contentEmbeddingStatisticsFromVertex(), createFileResponseFromMldev() (+46 more)
 
 ### Community 5 - "Part & Content Factory"
-Cohesion: 0.06
-Nodes (30): codeExecutionResult(), createPartFromBase64(), createPartFromExecutableCode(), createPartFromFunctionResponse(), error, executableCode(), findAfcIncompatibleToolIndexes(), functionCalls() (+22 more)
+Cohesion: 0.07
+Nodes (29): audioChunk(), createPartFromCodeExecutionResult(), createPartFromExecutableCode(), error, executableCode(), functionCalls(), hasCallableTools(), hasLeadingSlash (+21 more)
 
 ### Community 6 - "MLDev Configuration Transformers"
-Cohesion: 0.22
-Nodes (10): _fetch_dev(), _fetch_reddit(), fetch_tech_news(), _load_library(), manage_local_library(), Read/write the local saved_articles.json library.      action='check_duplicates', Read/write the local saved_articles.json library.      action='check_duplicates', Fetch articles from multiple sources.      source: 'hn' (Hacker News), 'dev' (De (+2 more)
+Cohesion: 0.14
+Nodes (17): _fetch_dev(), _fetch_hn(), _fetch_reddit(), fetch_tech_news(), _load_library(), manage_local_library(), Read/write the local saved_articles.json library.      action='check_duplicates', Fetch articles from multiple sources.      source: 'hn' (Hacker News), 'dev' (De (+9 more)
 
 ### Community 7 - "Agent Curator Backend Handlers"
-Cohesion: 0.07
-Nodes (31): audioTranscriptionConfigToMldev(), audioTranscriptionConfigToMldev$1(), contentToMldev(), contentToMldev$2(), contentToMldev$4(), contentToVertex$1(), createAuthTokenConfigToMldev(), createAuthTokenParametersToMldev() (+23 more)
+Cohesion: 0.12
+Nodes (17): audioTranscriptionConfigToMldev(), audioTranscriptionConfigToMldev$1(), contentToMldev(), contentToMldev$2(), contentToVertex$1(), createAuthTokenConfigToMldev(), createAuthTokenParametersToMldev(), generationConfigToVertex$1() (+9 more)
 
 ### Community 8 - "SDK Auth & Metadata Handling"
-Cohesion: 0.15
-Nodes (14): asResponse(), concatBytes(), decode(), decodeUTF8(), encodeUTF8(), finally(), findNewlineIndex(), flush() (+6 more)
+Cohesion: 0.13
+Nodes (26): __asyncGenerator(), __asyncValues(), __await(), callTool(), concatBytes(), decode(), decodeUTF8(), encodeUTF8() (+18 more)
 
 ### Community 9 - "HTTP Request & Retry Logic"
-Cohesion: 0.12
-Nodes (20): generatedImageFromMldev(), generatedVideoFromMldev(), generatedVideoFromMldev$1(), generatedVideoFromVertex(), generatedVideoFromVertex$1(), generateImagesResponseFromMldev(), generateVideosConfigToMldev(), generateVideosParametersToMldev() (+12 more)
+Cohesion: 0.17
+Nodes (15): generatedImageFromMldev(), generatedVideoFromMldev(), generatedVideoFromVertex(), generateImagesResponseFromMldev(), generateVideosConfigToMldev(), generateVideosParametersToMldev(), generateVideosSourceToMldev(), imageFromMldev() (+7 more)
 
 ### Community 10 - "Streaming & SSE Processing"
-Cohesion: 0.07
-Nodes (84): __asyncGenerator(), __asyncValues(), __await(), callTool(), cancel(), cancelBatchJobParametersToMldev(), cancelBatchJobParametersToVertex(), cancelTuningJobParametersToMldev() (+76 more)
+Cohesion: 0.15
+Nodes (19): computeTokens(), computeTokensParametersToVertex(), countTokens(), countTokensParametersToVertex(), createEmbeddingsBatchJobConfigToMldev(), createEmbeddingsBatchJobParametersToMldev(), createEmbeddingsInternal(), downloadMedia() (+11 more)
 
 ### Community 11 - "Extension Sidepanel Controller"
-Cohesion: 0.13
-Nodes (15): calculateDefaultRetryTimeoutMillis(), CancelReadableStream(), defaultParseResponse(), fetchWithTimeout(), fromSSEResponse(), generate(), isAbortError(), loggerFor() (+7 more)
+Cohesion: 0.10
+Nodes (21): asResponse(), calculateDefaultRetryTimeoutMillis(), CancelReadableStream(), defaultParseResponse(), finally(), fromSSEResponse(), generate(), handleWebSocketMessage() (+13 more)
 
 ### Community 12 - "Extension Dashboard Interface"
 Cohesion: 0.40
 Nodes (5): listModelsConfigToMldev(), listModelsConfigToVertex(), listModelsParametersToMldev(), listModelsParametersToVertex(), tModelsUrl()
 
 ### Community 13 - "URL & Header Builders"
-Cohesion: 0.15
-Nodes (16): contentToMldev$1(), contentToVertex(), contentToVertex$2(), countTokensConfigToVertex(), createCachedContentConfigToVertex(), embedContentConfigToMldev(), embedContentConfigToVertex(), embedContentParametersPrivateToMldev() (+8 more)
+Cohesion: 0.06
+Nodes (45): contentToMldev$1(), contentToMldev$4(), contentToVertex(), contentToVertex$2(), countTokensConfigToMldev(), countTokensConfigToVertex(), countTokensParametersToMldev(), createCachedContentConfigToVertex() (+37 more)
 
 ### Community 14 - "Live Connectivity & Transcription"
 Cohesion: 0.19
 Nodes (15): appendGemini(), callMcpTool(), checkServer(), clearGemini(), loadMcpTools(), mcpInitialize(), mcpRequest(), mcpToolsToFunctionDeclarations() (+7 more)
 
 ### Community 15 - "File Upload & Blob Management"
-Cohesion: 0.09
-Nodes (29): connect(), getApiKey(), getApiVersion(), getBaseUrl(), getCustomBaseUrl(), getDefaultHeaders(), getHeaders(), getLocation() (+21 more)
+Cohesion: 0.10
+Nodes (25): connect(), getApiKey(), getApiVersion(), getBaseUrl(), getCustomBaseUrl(), getDefaultHeaders(), getHeaders(), getNextGenClient() (+17 more)
 
 ### Community 16 - "REST API Method Proxies"
 Cohesion: 0.25
 Nodes (9): appendChatMessage(), isProviderReady(), mcpToolsToFunctionDeclarations(), renderDashboard(), resetConnection(), runAgent(), setServerStatus(), setStatus() (+1 more)
 
 ### Community 17 - "Image & Video Generation (MLDev)"
-Cohesion: 0.16
-Nodes (14): baseURLOverridden(), buildBody(), buildHeaders(), buildRequest(), buildURL(), defaultIdempotencyKey(), defaultQuery(), getUserAgent() (+6 more)
+Cohesion: 0.12
+Nodes (18): addAuthHeaders(), authHeaders(), baseURLOverridden(), buildBody(), buildHeaders(), buildRequest(), buildURL(), defaultIdempotencyKey() (+10 more)
 
 ### Community 18 - "Multimodal Processing (Vertex)"
-Cohesion: 0.29
-Nodes (8): json(), sleep$1(), throwErrorIfNotOK(), uploadBlob(), uploadBlobInternal(), uploadBlobToFileSearchStore(), uploadToFileSearchStoreOperationFromMldev(), uploadToFileSearchStoreResponseFromMldev()
+Cohesion: 0.11
+Nodes (23): constructor(), crossError(), download(), downloadFile(), fetchUploadUrl(), getBlobStat(), getDefaultFetch(), getFileName() (+15 more)
 
 ### Community 19 - "Tuning & Dataset Management"
 Cohesion: 0.04
@@ -216,37 +208,41 @@ Nodes (44): $apiKeyInput, $chatHistory, $chatPanel, checkpoint, cleanUrl, $clear
 Cohesion: 0.08
 Nodes (20): Change 1: System prompt — add intent class, Change 2: Quick-action preset buttons, Client Changes (extension/index.js), code:python (# New — for sentiment (richer fields than existing _fetch_re), code:block5 (- MARKETING_INTEL: brand sentiment, competitor comparison, c), code:toml ("duckduckgo-search>=8.0.0",), Constraints, Deps to Add (pyproject.toml) (+12 more)
 
+### Community 21 - "Predict & Operations API"
+Cohesion: 0.18
+Nodes (13): cancel(), cancelBatchJobParametersToMldev(), cancelBatchJobParametersToVertex(), cancelTuningJobParametersToMldev(), cancelTuningJobParametersToVertex(), delete(), deleteBatchJobParametersToMldev(), deleteBatchJobParametersToVertex() (+5 more)
+
 ### Community 22 - "Token & Content Generation"
-Cohesion: 0.50
-Nodes (4): createTuningJobConfigToVertex(), createTuningJobParametersPrivateToVertex(), tuningDatasetToVertex(), tuningValidationDatasetToVertex()
+Cohesion: 0.21
+Nodes (12): apiCall(), catch(), createTuningJobParametersPrivateToVertex(), getInternal(), getTuningJobParametersToMldev(), getTuningJobParametersToVertex(), sendMessageStream(), streamApiCall() (+4 more)
 
 ### Community 23 - "Job Cancellation & Deletion"
 Cohesion: 0.10
 Nodes (20): action, default_icon, default_title, background, service_worker, 128, 16, 32 (+12 more)
 
 ### Community 24 - "Media Download & SDK Helpers"
-Cohesion: 0.33
-Nodes (6): addAuthHeaders(), authHeaders(), getAuthHeaders(), getHeadersInternal(), includeExtraBodyToRequestInit(), includeExtraHttpOptionsToRequestInit()
+Cohesion: 0.17
+Nodes (12): editImageConfigToVertex(), editImageInternal(), editImageParametersInternalToVertex(), embedContentInternal(), formatMap(), tIsVertexEmbedContentModel(), uploadToFileSearchStoreConfigToMldev(), uploadToFileSearchStoreInternal() (+4 more)
 
 ### Community 25 - "Low-level Request Routing"
 Cohesion: 0.14
 Nodes (12): Architecture, Backend (Python 3.14 + FastMCP), CI/CD, Code Patterns, code:bash (# Backend — one-time setup), code:block2 (intel-agent/), Frontend (Chrome Extension — Manifest V3), graphify (+4 more)
 
 ### Community 26 - "Batch Job Configuration"
-Cohesion: 0.29
-Nodes (8): batchJobDestinationFromMldev(), batchJobDestinationFromVertex(), batchJobFromMldev(), batchJobFromVertex(), batchJobSourceFromVertex(), tJobState(), tRecvBatchJobDestination(), vertexMultimodalDatasetDestinationFromVertex()
+Cohesion: 0.20
+Nodes (12): fetchPredictOperationParametersToVertex(), fetchPredictVideosOperationInternal(), _fromAPIResponse(), get(), getDocumentParametersToMldev(), getFileSearchStoreParametersToMldev(), getModelParametersToMldev(), getModelParametersToVertex() (+4 more)
 
 ### Community 27 - "Job State & History"
-Cohesion: 0.12
-Nodes (17): apiCall(), constructor(), constructUrl(), getBaseResourcePath(), getDefaultFetch(), getRequestUrl(), getRequestUrlInternal(), hasNextPage() (+9 more)
+Cohesion: 0.27
+Nodes (10): constructUrl(), getBaseResourcePath(), includeExtraHttpOptionsToRequestInit(), internalRegisterFilesParametersToMldev(), patchHttpOptions(), registerFiles(), registerFilesInternal(), request() (+2 more)
 
 ### Community 28 - "Chat History & Messaging"
 Cohesion: 0.52
 Nodes (7): liveSendRealtimeInputParametersToMldev(), liveSendRealtimeInputParametersToVertex(), sendRealtimeInput(), tAudioBlob(), tBlob(), tBlobs(), tImageBlob()
 
 ### Community 29 - "Real-time Input & Audio"
-Cohesion: 0.29
-Nodes (8): catch(), extractCuratedHistory(), getHistory(), isValidContent(), isValidResponse(), recordHistory(), sendMessage(), sendMessageStream()
+Cohesion: 0.47
+Nodes (6): createCachedContentParametersToVertex(), getLocation(), getProject(), prepareOptions(), resourceName(), tCachesModel()
 
 ### Community 30 - "Video Ops (MLDev)"
 Cohesion: 0.14
@@ -285,48 +281,48 @@ Cohesion: 0.50
 Nodes (4): authConfigToMldev$4(), googleMapsToMldev$4(), googleSearchToMldev$4(), toolToMldev$4()
 
 ### Community 39 - "Tool Call Metadata"
-Cohesion: 0.13
-Nodes (20): controlReferenceConfigToVertex(), generateVideosConfigToVertex(), generateVideosParametersToVertex(), generateVideosSourceToVertex(), imageToVertex(), maskReferenceConfigToVertex(), productImageToVertex(), recontextImageConfigToVertex() (+12 more)
+Cohesion: 0.20
+Nodes (14): controlReferenceConfigToVertex(), generateVideosConfigToVertex(), generateVideosInternal(), generateVideosParametersToVertex(), generateVideosSourceToVertex(), imageToVertex(), maskReferenceConfigToVertex(), productImageToVertex() (+6 more)
 
 ### Community 40 - "Function Call Fragmenting"
-Cohesion: 0.29
-Nodes (7): createEmbeddingsBatchJobConfigToMldev(), createEmbeddingsBatchJobParametersToMldev(), embedContentBatchToMldev(), embedContentConfigToMldev$1(), embeddingsBatchJobSourceToMldev(), moveValueByPath(), _moveValueRecursive()
+Cohesion: 0.67
+Nodes (3): embedContentBatchToMldev(), embedContentConfigToMldev$1(), embeddingsBatchJobSourceToMldev()
 
 ### Community 41 - "Search & Maps Tooling"
-Cohesion: 0.17
-Nodes (12): _build_chart_node(), _normalize_chart(), Lowercase type, convert labels/values simple format, normalize keys, enable lege, Lowercase type, convert labels/values simple format, normalize keys, enable lege, Convert normalized chart dict to Prefab JSON chart node., Convert normalized chart dict to Prefab JSON chart node., Render a dashboard. Always call this when finished — it is the only output surfa, Render a dashboard. Always call this when finished — it is the only output surfa (+4 more)
+Cohesion: 0.20
+Nodes (10): _normalize_chart(), Lowercase type, convert labels/values simple format, normalize keys, enable lege, Lowercase type, convert labels/values simple format, normalize keys, enable lege, Render a dashboard. Always call this when finished — it is the only output surfa, Render a dashboard. Always call this when finished — it is the only output surfa, Lowercase type, convert labels/values simple format, normalize keys, enable lege, Lowercase type, convert labels/values simple format, normalize keys, enable lege, Render a dashboard. Always call this when finished — it is the only output surfa (+2 more)
 
 ### Community 42 - "External Tool Providers"
-Cohesion: 0.18
-Nodes (11): batchJobDestinationToVertex(), batchJobSourceToMldev(), batchJobSourceToVertex(), createBatchJobConfigToMldev(), createBatchJobConfigToVertex(), createBatchJobParametersToMldev(), createBatchJobParametersToVertex(), createInlinedGenerateContentRequest() (+3 more)
+Cohesion: 0.25
+Nodes (9): batchJobSourceToMldev(), batchJobSourceToVertex(), createBatchJobConfigToMldev(), createBatchJobParametersToMldev(), createBatchJobParametersToVertex(), createFileParametersToMldev(), createInlinedGenerateContentRequest(), createInternal() (+1 more)
 
 ### Community 43 - "Image Generation Logic"
 Cohesion: 0.20
 Nodes (10): Basic demo flow sequence, Dynamic MCP to Gemini tool binding, genai.js bundled ES module, Manifest V3 security & permissions, FastMCP CORS middleware, API key settings page, Agentic Loop, callMcpTool function (+2 more)
 
 ### Community 46 - "Options Page Interaction"
-Cohesion: 0.29
-Nodes (6): $apiKeyInput, $btn, key, $mcpUrlInput, settings, $status
+Cohesion: 0.18
+Nodes (7): $apiKeyInput, $btn, key, $mcpUrlInput, settings, $status, set()
 
 ### Community 51 - "Community 51"
 Cohesion: 0.27
 Nodes (10): _LAST_DASHBOARD_HTML server cache, _CHART_REGISTRY, CORSMiddleware Configuration, dashboard GET Route, _LAST_DASHBOARD_HTML Cache, render_prefab_dashboard MCP Tool, _TOPIC_PALETTES, Dashboard iframe Rendering Pattern (+2 more)
 
 ### Community 52 - "Community 52"
-Cohesion: 0.22
-Nodes (9): deleteCachedContentParametersToMldev(), deleteCachedContentParametersToVertex(), getCachedContentParametersToMldev(), getCachedContentParametersToVertex(), tCachedContentName(), updateCachedContentConfigToMldev(), updateCachedContentConfigToVertex(), updateCachedContentParametersToMldev() (+1 more)
+Cohesion: 0.33
+Nodes (6): methodRequest(), patch(), put(), update(), updateModelConfigToMldev(), updateModelParametersToMldev()
 
 ### Community 53 - "Community 53"
-Cohesion: 0.22
-Nodes (9): _bucket_top_posts(), fetch_brand_sentiment(), _fetch_reddit_sentiment(), _fetch_twitter_api(), Fetch tweets via Twitter API v2 recent search. Requires TWITTER_BEARER_TOKEN in, Returns (aggregate_dict, per_text_labels) — single model pass., Return up to n posts per sentiment label (neg first), tagged with sentiment. If, Fetch social media sentiment for pharma brands from Reddit, Twitter/X, and Linke (+1 more)
+Cohesion: 0.15
+Nodes (13): _bucket_top_posts(), fetch_brand_sentiment(), _fetch_reddit_sentiment(), _fetch_twitter_api(), Fetch tweets via Twitter API v2 recent search. Requires TWITTER_BEARER_TOKEN in, Fetch tweets via Twitter API v2 recent search. Requires TWITTER_BEARER_TOKEN in, Returns (aggregate_dict, per_text_labels) — single model pass., Returns (aggregate_dict, per_text_labels) — single model pass. (+5 more)
 
 ### Community 54 - "Community 54"
-Cohesion: 0.29
-Nodes (7): _fetch_dev(), _fetch_hn(), _fetch_reddit(), fetch_tech_news(), Fetch articles from multiple sources.      source: 'hn' (Hacker News), 'dev' (De, Fetch from Hacker News (Algolia)., Primary tool for DEVELOPER TRENDS and COMMUNITY DISCUSSION.     Use this for: "W
+Cohesion: 0.40
+Nodes (5): contentToMldev$3(), createCachedContentConfigToMldev(), createCachedContentParametersToMldev(), functionCallingConfigToMldev$1(), toolConfigToMldev$1()
 
 ### Community 55 - "Community 55"
-Cohesion: 0.33
-Nodes (6): deleteFileParametersToMldev(), getFileParametersToMldev(), _isFile(), isGeneratedVideo(), isVideo(), tFileName()
+Cohesion: 0.40
+Nodes (5): generatedVideoFromMldev$1(), generatedVideoFromVertex$1(), tBytes$1(), videoFromMldev$1(), videoFromVertex$1()
 
 ### Community 56 - "Community 56"
 Cohesion: 0.40
@@ -334,15 +330,15 @@ Nodes (6): callMcpTool(), checkServer(), loadMcpTools(), mcpInitialize(), mcpReq
 
 ### Community 58 - "Community 58"
 Cohesion: 0.40
-Nodes (5): _load_library(), manage_local_library(), Read/write the local saved_articles.json library.      action='check_duplicates', Read/write the local saved_articles.json library.      action='check_duplicates', _save_library()
+Nodes (5): _build_chart_node(), Convert normalized chart dict to Prefab JSON chart node., Convert normalized chart dict to Prefab JSON chart node., Convert normalized chart dict to Prefab JSON chart node., Convert normalized chart dict to Prefab JSON chart node.
 
 ### Community 59 - "Community 59"
 Cohesion: 0.40
 Nodes (5): createModelContent(), createPartFromText(), createUserContent(), _isPart(), _toParts()
 
 ### Community 60 - "Community 60"
-Cohesion: 0.40
-Nodes (5): pause(), play(), resetContext(), sendPlaybackControl(), stop()
+Cohesion: 0.50
+Nodes (4): batchJobDestinationToVertex(), createBatchJobConfigToVertex(), tBatchJobDestination(), vertexMultimodalDatasetDestinationToVertex()
 
 ### Community 61 - "Community 61"
 Cohesion: 0.50
@@ -350,35 +346,31 @@ Nodes (4): Chrome extension icon click handler, Dashboard iframe injection, Side
 
 ### Community 62 - "Community 62"
 Cohesion: 0.50
-Nodes (4): blobToMldev$1(), fileDataToMldev$1(), functionCallToMldev$1(), partToMldev$1()
+Nodes (4): blobToMldev$4(), fileDataToMldev$4(), functionCallToMldev$4(), partToMldev$4()
 
 ### Community 63 - "Community 63"
 Cohesion: 0.50
-Nodes (4): blobToMldev$2(), fileDataToMldev$2(), functionCallToMldev$2(), partToMldev$2()
+Nodes (4): createTuningJobConfigToMldev(), createTuningJobParametersPrivateToMldev(), tuneMldevInternal(), tuningDatasetToMldev()
 
 ### Community 64 - "Community 64"
 Cohesion: 0.50
-Nodes (4): blobToMldev$3(), fileDataToMldev$3(), functionCallToMldev$3(), partToMldev$3()
+Nodes (4): recontextImage(), recontextImageConfigToVertex(), recontextImageParametersToVertex(), recontextImageSourceToVertex()
 
 ### Community 65 - "Community 65"
-Cohesion: 0.50
-Nodes (4): flattenTypeArrayToAnyOf(), processJsonSchema(), tSchema(), tTool()
-
-### Community 66 - "Community 66"
-Cohesion: 0.50
-Nodes (4): hasField(), listModelsResponseFromMldev(), listModelsResponseFromVertex(), tExtractModels()
+Cohesion: 0.67
+Nodes (3): importFile(), importFileConfigToMldev(), importFileParametersToMldev()
 
 ### Community 67 - "Community 67"
 Cohesion: 0.50
 Nodes (4): tTuningJobStatus(), tunedModelFromMldev(), tuningJobFromMldev(), tuningJobFromVertex()
 
 ### Community 69 - "Community 69"
-Cohesion: 0.50
-Nodes (4): dashboard(), Serve last rendered Prefab dashboard HTML with theme support., Serve last rendered Prefab dashboard HTML with theme support., Serve last rendered Prefab dashboard HTML with theme support.
+Cohesion: 0.40
+Nodes (5): dashboard(), Serve last rendered Prefab dashboard HTML with theme support., Serve last rendered Prefab dashboard HTML with theme support., Serve last rendered Prefab dashboard HTML with theme support., Serve last rendered Prefab dashboard HTML with theme support.
 
 ### Community 70 - "Community 70"
-Cohesion: 0.50
-Nodes (4): _ddgs_text_with_fallback(), fetch_search_presence(), Try primary backend aggressively; only fall back if it consistently fails., Check where pharma brands appear in search results for given keywords.      bran
+Cohesion: 0.29
+Nodes (7): list(), _ddgs_text_with_fallback(), fetch_search_presence(), Try primary backend aggressively; only fall back if it consistently fails., Try primary backend aggressively; only fall back if it consistently fails., Check where pharma brands appear in search results for given keywords.      bran, Check where pharma brands appear in search results for given keywords.      bran
 
 ### Community 71 - "Community 71"
 Cohesion: 0.67
@@ -393,8 +385,16 @@ Cohesion: 0.67
 Nodes (3): formatDestination(), getBigqueryUri(), getGcsUri()
 
 ### Community 75 - "Community 75"
-Cohesion: 0.67
-Nodes (3): _fetch_hn(), Fetch from Hacker News (Algolia)., Fetch from Hacker News (Algolia).
+Cohesion: 0.25
+Nodes (8): _fetch_dev(), _fetch_hn(), _fetch_reddit(), fetch_tech_news(), Fetch from Hacker News (Algolia)., Fetch from Hacker News (Algolia)., Fetch articles from multiple sources.      source: 'hn' (Hacker News), 'dev' (De, Fetch articles from multiple sources.      source: 'hn' (Hacker News), 'dev' (De
+
+### Community 78 - "Community 78"
+Cohesion: 0.17
+Nodes (13): convertBidiSetupToTokenSetup(), create(), createFileSearchStoreConfigToMldev(), createFileSearchStoreParametersToMldev(), fetchWithTimeout(), getFieldMasks(), isMcpClient(), _makeAbort() (+5 more)
+
+### Community 81 - "Community 81"
+Cohesion: 0.15
+Nodes (13): listBatchJobsConfigToMldev(), listBatchJobsConfigToVertex(), listBatchJobsParametersToMldev(), listBatchJobsParametersToVertex(), listCachedContentsConfigToMldev(), listCachedContentsConfigToVertex(), listCachedContentsParametersToMldev(), listCachedContentsParametersToVertex() (+5 more)
 
 ## Ambiguous Edges - Review These
 - `options.js Settings Page Script` → `saved_articles.json Local Library`  [AMBIGUOUS]
@@ -403,22 +403,22 @@ Nodes (3): _fetch_hn(), Fetch from Hacker News (Algolia)., Fetch from Hacker New
 ## Knowledge Gaps
 - **122 isolated node(s):** `u8`, `error`, `invalidSegments`, `path3`, `hasLeadingSlash` (+117 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **24 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `options.js Settings Page Script` and `saved_articles.json Local Library`?**
   _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
-- **Why does `list()` connect `Streaming & SSE Processing` to `IntelAgent Core Components`, `Community 53`, `Part & Content Factory`, `Community 70`?**
-  _High betweenness centrality (0.098) - this node is a cross-community bridge._
-- **Why does `fetch_brand_sentiment()` connect `Community 53` to `Streaming & SSE Processing`, `MLDev Configuration Transformers`?**
-  _High betweenness centrality (0.061) - this node is a cross-community bridge._
-- **Why does `_ddgs_text_with_fallback()` connect `Community 70` to `Streaming & SSE Processing`, `MLDev Configuration Transformers`?**
-  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+- **Why does `list()` connect `Community 70` to `IntelAgent Core Components`, `Part & Content Factory`, `Community 78`, `Community 53`, `Batch Job Configuration`?**
+  _High betweenness centrality (0.106) - this node is a cross-community bridge._
+- **Why does `fetch_brand_sentiment()` connect `Community 53` to `Options Page Interaction`, `Community 70`, `MLDev Configuration Transformers`?**
+  _High betweenness centrality (0.070) - this node is a cross-community bridge._
+- **Why does `_ddgs_text_with_fallback()` connect `Community 70` to `MLDev Configuration Transformers`?**
+  _High betweenness centrality (0.040) - this node is a cross-community bridge._
 - **What connects `MCP server integration tests. Requires server running at http://localhost:8000.`, `Fetch tweets via Twitter API v2 recent search. Requires TWITTER_BEARER_TOKEN in`, `Returns (aggregate_dict, per_text_labels) — single model pass.` to the rest of the system?**
-  _163 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _173 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `MCP Server Testing` be split into smaller, more focused modules?**
   _Cohesion score 0.07792207792207792 - nodes in this community are weakly interconnected._
 - **Should `GenAI SDK Internal Logic` be split into smaller, more focused modules?**
-  _Cohesion score 0.04177683765203596 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.048484848484848485 - nodes in this community are weakly interconnected._

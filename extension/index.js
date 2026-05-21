@@ -1,8 +1,9 @@
 import { GoogleGenAI } from "./genai.js";
 import { GeminiProvider } from "./providers/gemini-provider.js";
 import { OllamaProvider } from "./providers/ollama-provider.js";
+import { storage, storageOnChanged, DEFAULT_SERVER_URL } from "./storage.js";
 
-let MCP_URL = "http://localhost:8000/mcp";
+let MCP_URL = `${DEFAULT_SERVER_URL}/mcp`;
 const GEMINI_MODEL_STORAGE = "gemini_model";
 const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite";
 const API_KEY_STORAGE = "gemini_api_key";
@@ -22,7 +23,7 @@ const $promptInput = document.getElementById("prompt-input");
 const $dashboardFrame = document.getElementById("prefab-frame");
 const $emptyState = document.getElementById("empty-state");
 const $chatHistory = document.getElementById("chat-history");
-let DASHBOARD_URL = "http://localhost:8000/dashboard";
+let DASHBOARD_URL = `${DEFAULT_SERVER_URL}/dashboard`;
 const $settingsBtn = document.getElementById("settings-btn");
 const $themeBtn = document.getElementById("theme-btn");
 const $settingsPanel = document.getElementById("settings-panel");
@@ -399,7 +400,7 @@ async function checkServer() {
 }
 
 function loadSettings() {
-  chrome.storage.local.get(
+  storage.get(
     [API_KEY_STORAGE, MCP_SERVER_URL_STORAGE, THEME_STORAGE, LLM_PROVIDER_STORAGE, GEMINI_MODEL_STORAGE, OLLAMA_URL_STORAGE, OLLAMA_MODEL_STORAGE, OLLAMA_THINKING_STORAGE],
     result => {
       geminiApiKey = result[API_KEY_STORAGE] || "";
@@ -424,7 +425,7 @@ function loadSettings() {
 
       initProvider(providerType, { apiKey: geminiApiKey, geminiModel, ollamaUrl, ollamaModel, ollamaThinking });
 
-      const serverUrl = result[MCP_SERVER_URL_STORAGE] || "http://localhost:8000";
+      const serverUrl = result[MCP_SERVER_URL_STORAGE] || DEFAULT_SERVER_URL;
       $mcpUrlInput.value = serverUrl;
       MCP_URL = `${serverUrl.replace(/\/$/, "")}/mcp`;
       DASHBOARD_URL = `${serverUrl.replace(/\/$/, "")}/dashboard`;
@@ -465,7 +466,7 @@ function applyTheme(theme) {
 }
 
 function loadTheme() {
-  chrome.storage.local.get([THEME_STORAGE], result => {
+  storage.get([THEME_STORAGE], result => {
     applyTheme(result[THEME_STORAGE] || "dark");
   });
 }
@@ -473,7 +474,7 @@ function loadTheme() {
 $themeBtn.addEventListener("click", () => {
   const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
   applyTheme(next);
-  chrome.storage.local.set({ [THEME_STORAGE]: next });
+  storage.set({ [THEME_STORAGE]: next });
   if ($dashboardFrame.style.display !== "none") {
     renderDashboard();
   }
@@ -481,7 +482,7 @@ $themeBtn.addEventListener("click", () => {
 
 $saveSettingsBtn.addEventListener("click", () => {
   const key = $apiKeyInput.value.trim();
-  const serverUrl = $mcpUrlInput.value.trim() || "http://localhost:8000";
+  const serverUrl = $mcpUrlInput.value.trim() || DEFAULT_SERVER_URL;
   const providerType = $providerSelect.value;
   const geminiModel = $geminiModelInput.value.trim() || DEFAULT_GEMINI_MODEL;
   const ollamaUrl = $ollamaUrlInput.value.trim() || DEFAULT_OLLAMA_URL;
@@ -519,7 +520,7 @@ $saveSettingsBtn.addEventListener("click", () => {
     updateChatButtonStates();
   }
 
-  chrome.storage.local.set(settings, () => {
+  storage.set(settings, () => {
     $keyStatus.textContent = "Settings saved.";
     checkServer();
     setTimeout(() => { $keyStatus.textContent = ""; }, 2000);
@@ -559,7 +560,7 @@ $promptInput.addEventListener("input", () => {
   $promptInput.style.height = Math.min($promptInput.scrollHeight, 200) + "px";
 });
 
-chrome.storage.onChanged.addListener((changes, area) => {
+storageOnChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (changes[API_KEY_STORAGE]?.newValue) {
     geminiApiKey = changes[API_KEY_STORAGE].newValue;
