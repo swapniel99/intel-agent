@@ -222,19 +222,34 @@ async function runAgent(userPrompt) {
   const systemInstruction = `You are IntelAgent, an AI research assistant.
 Current Date and Time: ${now}
 
-Pick tools based on the user's intent.
+## Step-by-step reasoning (REQUIRED)
+Before calling any tool, reason silently through these steps:
+1. Classify intent (see Intent Classification below).
+2. Identify which tools are needed and in what order.
+3. After each tool result, check: is the data sufficient? Are there errors or empty results?
+4. Before calling render_dashboard, verify: chart.data is non-empty, all metrics have values, summary is populated.
+Only proceed to the next step after completing the current one.
 
-Intent classification:
+## Intent Classification
 - MARKETING_INTEL: brand sentiment, competitor comparison, content trends, search rankings.
   → fetch_brand_sentiment → fetch_search_presence → fetch_content_trends
   → render_dashboard(metrics=[...], chart=..., table=..., layout="split")
   Use metrics for sentiment scores, chart (bar/radar) for brand comparisons, table for ranking data.
 
-Rules (CRITICAL):
+## Multi-turn context
+- If a prior turn in this conversation already fetched data, reuse it for follow-up views (e.g. different chart type, filtered table) without re-fetching.
+- Carry forward brand names, timeframes, and results from earlier turns unless the user explicitly changes them.
+
+## Fallbacks (CRITICAL)
+- If a tool returns {status: "insufficient_data"} or {status: "unavailable: ..."}: surface it in the summary as "Insufficient data for [platform/brand]" and set that metric value to "N/A". Never invent or estimate missing data.
+- If ALL tools for a query return errors: call render_dashboard with summary explaining what failed and why; still include any partial data that succeeded.
+- If chart.data would be empty after applying fallbacks: omit the chart param entirely rather than rendering an empty chart.
+
+## Output Rules (CRITICAL)
 - ALWAYS call render_dashboard when finished. It is the only output surface.
-- PRO-ACTIVELY USE CHARTS: If you are dealing with numerical data, comparisons, or time-series, ALWAYS include a chart in render_dashboard. You MUST explicitly set chart.type — never omit it. Pick from: "bar" (category comparison), "line" (time trend), "area" (volume trend), "pie" (part-of-whole), "radar" (multi-axis), "radial" (single gauge). For multi-brand sentiment: use "bar". For search rankings: use "bar". For single-brand sentiment breakdown: use "pie".
 - Do NOT emit text outside of tool calls.
 - summary: your full prose response to the user (2-3 sentences). ALWAYS populate this.
+- PRO-ACTIVELY USE CHARTS: For numerical data, comparisons, or time-series, ALWAYS include a chart. You MUST explicitly set chart.type — never omit it. Pick from: "bar" (category comparison), "line" (time trend), "area" (volume trend), "pie" (part-of-whole), "radar" (multi-axis), "radial" (single gauge). For multi-brand sentiment: use "bar". For search rankings: use "bar". For single-brand sentiment breakdown: use "pie".
 - Use metrics for KPI numbers. Use chart for visualizations. Use table for comparisons.
 - layout="auto" always works — backend picks the best layout. Only set layout explicitly for "split".
 - When showing sentiment results, ALWAYS include total_posts count per platform (e.g. "Based on 50 tweets" or "Analyzed 25 Reddit posts"). Surface this in the summary and/or as a metric.
@@ -595,10 +610,10 @@ function setPreset(text) {
 }
 
 $presetSentiment.addEventListener("click", () =>
-  setPreset("Compare sentiment for PharmEasy vs Tata 1mg vs Apollo Pharmacy on Reddit and Twitter this week.")
+  setPreset("Compare sentiment for PharmEasy vs Tata 1mg vs Apollo 247 on Reddit and Twitter this week.")
 );
 $presetRadar.addEventListener("click", () =>
-  setPreset("Compare PharmEasy vs Tata 1mg vs Apollo across positive%, negative% and neutral% on Reddit as radar chart.")
+  setPreset("Compare PharmEasy vs Tata 1mg vs Apollo 247 across positive%, negative% and neutral% on Reddit as radar chart.")
 );
 $presetPie.addEventListener("click", () =>
   setPreset("What is the sentiment breakdown for PharmEasy on Reddit this month?")
@@ -609,10 +624,10 @@ $presetTrends?.addEventListener("click", () =>
   setPreset("What are the content trends for online pharmacy in India this week?")
 );
 $presetRankings.addEventListener("click", () =>
-  setPreset("Check search rankings for PharmEasy, Tata 1mg, Apollo for keywords: online pharmacy, medicine delivery, health app.")
+  setPreset("Check search rankings for PharmEasy, Tata 1mg, Apollo 247 for keywords: online pharmacy, medicine delivery, health app.")
 );
 $presetAnalysis.addEventListener("click", () =>
-  setPreset("Full competitive analysis: sentiment, search rankings, and content trends for PharmEasy vs Tata 1mg vs Apollo.")
+  setPreset("Full competitive analysis: sentiment, search rankings, and content trends for PharmEasy vs Tata 1mg vs Apollo 247.")
 );
 
 // ── Resizer ───────────────────────────────────────────────────────────────────

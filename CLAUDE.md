@@ -4,222 +4,122 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**IntelAgent** is a personal AI research assistant (Chrome Extension + local Python backend) that fetches trending tech articles from multiple sources and renders a curated dashboard.
+**IntelAgent** is a pharma-market intelligence assistant (Chrome Extension + local Python backend) that fetches brand sentiment, search presence, and content trends, then renders a curated dashboard.
 
-**Current state:** Backend (`main.py`) and frontend (`extension/`) both complete and functional.
+**Current branch (`pharmeasy`):** focused on marketing intel tools. `fetch_tech_news` and `manage_local_library` do NOT exist here; those are on `main`.
 
 ## Architecture
 
 ### Frontend (Chrome Extension — Manifest V3)
-- **Standalone Window UI** (`extension/index.html` / `index.js`) — orchestrator + primary UI in dedicated window (not side panel)
-- **Options Page** (`extension/options.html` / `options.js`) for one-time Gemini API key setup
-- `index.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop calling Gemini with MCP tool declarations, proxies each `functionCall` to `POST http://localhost:8000/mcp tools/call`
-- **Layout:** Resizable side-by-side panels — left (dynamic %): dashboard iframe, right (dynamic %): chat history + prompt input. Default is roughly 70/30 split.
-- Dashboard rendering: final tool result (`render_dashboard`) → backend populates `_LAST_DASHBOARD_HTML` → left panel sets `iframe.src` to `http://localhost:8000/dashboard?theme=...`
+- **Standalone Window UI** (`extension/index.html` / `index.js`) — orchestrator + primary UI
+- **Provider abstraction** (`extension/providers/`): `GeminiProvider` wraps `@google/genai`; `OllamaProvider` converts Gemini-history format to OpenAI-compatible messages and calls a local Ollama instance. Provider selected at runtime from `chrome.storage.local`.
+- `index.js` calls `mcpInitialize()` + `loadMcpTools()` at startup, runs agentic loop, proxies each `functionCall` to `POST http://localhost:8000/mcp`
+- **Layout:** Resizable side-by-side panels — left: dashboard iframe, right: chat history + prompt input (default ~70/30)
+- Dashboard rendering: `render_dashboard` → backend populates `_LAST_DASHBOARD_HTML` → iframe loads `http://localhost:8000/dashboard?theme=...`
 - `background.js` opens extension window on icon click
-- `genai.js` is bundled copy of `@google/genai` SDK (no build step — ES modules)
-- Gemini API key + MCP server URL stored in `chrome.storage.local`. Configurable via inline settings panel (gear icon in main UI) or `options.html` (manifest `options_page`)
-- Model: `gemini-3.1-flash-lite-preview` (configured in `index.js`)
-- No package manager / build step — plain ES modules
-- Theme: dark/light mode toggle in UI, applied to dashboard iframe via query parameter
+- `genai.js` is bundled `@google/genai` SDK (no build step)
+- Settings stored in `chrome.storage.local`: Gemini API key, MCP server URL, provider (`gemini`|`ollama`), Ollama URL/model, theme, Gemini model
+
+**Defaults:**
+- Gemini model: `gemini-3-flash-preview` (change via inline settings panel)
+- Ollama URL: `http://localhost:11434`, model: `gemma4:26b`
+- MCP URL: `http://localhost:8000/mcp`
+
+**Agentic loop:** MAX_TURNS=12, forceFinish at turn 8 (constrains tools to `render_dashboard` only)
 
 ### Backend (Python 3.14 + FastMCP)
-Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves the last rendered prefab HTML for iframe loading.
+Runs on `http://localhost:8000`. FastMCP exposes tools via streamable-HTTP at `/mcp`. Additional route `/dashboard` (GET) serves last rendered HTML.
 
-**6 MCP tools** (web search delegated to Gemini built-in `googleSearch`, not MCP):
-| Tool | Type | Details |
-|---|---|---|
-| `fetch_tech_news` | Internet | Fetches from HN (Algolia), Dev.to, or Reddit; `source` param: `"hn"` | `"dev"` | `"reddit"` | `"all"` (default). Returns `[{title,url,points,source}]`. Falls back to `saved_articles.json` on failure. |
-| `manage_local_library` | File CRUD | 6 actions on `saved_articles.json`: `check_duplicates`, `save_new`, `list_all`, `search`, `update`, `delete`. Deduplicates by URL. |
-| `render_dashboard` | UI | Compiles research into a rich HTML dashboard. Supports 6 chart types (Bar, Line, Area, Pie, Radar, Radial), metrics, tables, and multiple layouts (`auto`, `kpi_grid`, `chart_focus`, `table_report`, `split`). |
-| `fetch_brand_sentiment` | Marketing | Keyword sentiment for brands across Reddit/Twitter/LinkedIn. Params: `brands`, `platforms`, `timeframe`. Returns per-platform sentiment scores + top posts. |
-| `fetch_content_trends` | Marketing | Google Trends interest by Indian city/tier for a topic. Params: `topic`, `region_tier`, `timeframe`. Returns `[{city, tier, interest_score, related_queries}]`. |
-| `fetch_search_presence` | Marketing | DuckDuckGo rank check for brands across search keywords. Params: `brands`, `keywords`. Returns `[{keyword, brand, rank, present, url}]`. |
+**HuggingFace model loaded at startup** — `cardiffnlp/twitter-roberta-base-sentiment-latest` loaded via `transformers.pipeline` before any request. First cold start downloads the model (~500MB); subsequent starts load from cache.
 
-`search_internet` (DuckDuckGo via `ddgs`) removed. Replaced by Gemini native `googleSearch` tool wired in `index.js`.
+**4 MCP tools:**
+| Tool | Details |
+|---|---|
+| `fetch_brand_sentiment` | Reddit + Twitter/X + LinkedIn sentiment for pharma brands. Uses RoBERTa for scoring. Twitter: API v2 if `TWITTER_BEARER_TOKEN` set, else DDGS fallback. Returns `[{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]`. |
+| `fetch_content_trends` | Google Trends interest by Indian city/tier. Params: `topic`, `region_tier` (`tier1`\|`tier2`\|`tier3`\|`all`), `timeframe`. Returns `[{city, tier, interest_score, related_queries, related_topics}]`. |
+| `fetch_search_presence` | DuckDuckGo rank check for brands across search keywords. DDGS backend chain: `yahoo → yandex → auto`. Returns `[{keyword, brand, rank, present, url, title, snippet, source_backend, top_results}]`. |
+| `render_dashboard` | Compiles research into rich HTML. 6 chart types (Bar, Line, Area, Pie, Radar, Radial), metrics, tables, layouts. Returns `{"status": "dashboard_ready"}`. |
 
-**CORS:** Configured via `mcp.run(middleware=[...])` using Starlette `CORSMiddleware`. `allow_origins=["*"]`, `allow_credentials=False`. MCP protocol headers (`mcp-protocol-version`, `mcp-session-id`) explicitly listed in `allow_headers`.
+**Sentiment scoring:** `_score_sentiment(texts)` batches through RoBERTa (batch_size=16). `_bucket_top_posts()` groups by label (neg first). `_TWITTER_BRAND_QUERY` disambiguates short names (e.g. `"pharmeasy"` → `'"PharmEasy" OR "@pharmeasyapp"'`). `_BRAND_DOMAINS` maps brand names to domains for search presence.
 
-**Fallback:** If `fetch_tech_news` fails, return cached `saved_articles.json` contents + status message. Never raise to the agent.
-
-### Data
-- `saved_articles.json`: `[{ id, title, url, points, ai_summary, saved_at }]`
-- Prefab output: complete self-contained HTML page served via `/dashboard` route with theme injection.
+**CORS:** `allow_origins=["*"]`, `allow_credentials=False`. MCP protocol headers explicitly listed in `allow_headers`.
 
 ## Setup & Commands
 
 ```bash
-# Backend — one-time setup (uses uv, not pip directly)
-uv sync                   # installs fastmcp, httpx, prefab-ui, uvicorn, ddgs, pytrends from uv.lock
+# Backend — one-time setup
+uv sync
 
-# Backend — run server
-./.venv/bin/python main.py            # http://localhost:8000 (streamable-http transport)
+# Backend — run server (Twitter token optional — enables API v2; falls back to DDGS)
+./.venv/bin/python main.py
+TWITTER_BEARER_TOKEN=xxx ./.venv/bin/python main.py   # with Twitter API
 
-# Backend — run server with optional Twitter API (free tier: last 7 days, 500K tweets/month)
-TWITTER_BEARER_TOKEN=xxx ./.venv/bin/python main.py
+# Tests — self-contained, no running server needed (spawn stdio subprocess internally)
+uv run pytest test_mcp_server.py -v
 
-# Backend — verify server connectivity and logic
-pytest test_mcp_server.py  # comprehensive integration test suite for tools and routes
+# Run single test
+uv run pytest test_mcp_server.py::test_render_basic_dashboard -v
 
-# Backend — run tests (when implemented)
-pytest
-
-# Frontend — no build step
-# Load unpacked extension from chrome://extensions/ → "Load unpacked" → select extension/
+# Twitter-gated tests skip unless token set
+TWITTER_BEARER_TOKEN=xxx uv run pytest test_mcp_server.py -v
 ```
+
+**Frontend:** Load unpacked from `chrome://extensions/` → "Load unpacked" → select `extension/`
+
+**`.env` file:** create at repo root with `TWITTER_BEARER_TOKEN=...` (loaded via `python-dotenv` at startup)
 
 ## CI/CD
 
-GitHub Actions workflow in `.github/workflows/pytest.yml` runs unit tests on every push and pull request to the `main` branch.
-- **Environment**: Python 3.14 (Ubuntu)
-- **Tooling**: `uv` for dependency management and test execution
-
-
-## Demo Sequences
-
-**Basic flow:** User prompt → Gemini chains: `fetch_tech_news` → `manage_local_library("check_duplicates")` → `manage_local_library("save_new")` → `render_dashboard` → dashboard injected into main iframe.
+`.github/workflows/pytest.yml` — runs `uv run pytest` on push/PR to `main`. Python 3.14 + Ubuntu.
 
 ## Key Constraints
 
-- Gemini tool binding is **dynamic** — `index.js` POSTs `tools/list` to `http://localhost:8000/mcp` at init, converts to `functionDeclarations`
-- Gemini model pinned: `gemini-3.1-flash-lite-preview` (index.js:4) — preview SKU, swap when GA
-- MCP protocol endpoint: `POST http://localhost:8000/mcp` (FastMCP streamable-http transport, JSON-RPC 2.0)
-- Tool returns are uniform `dict` or `list[dict]` — no mixed `str|list` unions; exceptions return `[{status: "error message"}]`
-- Fallback pattern: `fetch_tech_news` returns `{status}` sentinel, never raises (keeps agent running)
-- MCP session auto-recovery: `index.js` retries on session loss, re-initializes `mcp-session-id` transparently with timeout
-- MCP request timeout: retry logic implemented; requests timeout after 20s, retry up to 2 attempts with exponential backoff
-- Conversation history: in-memory tracking (not truncated); checkpoint stack enables undo/clear without reloading
-- Theme: global dark/light mode toggle in extension UI, state in `chrome.storage.local`. Passed to dashboard via `?theme=dark|light`.
-- Dashboard content: handled entirely by `render_dashboard` tool which returns `{"status": "dashboard_ready"}`.
-- **Data Visualization**: Pro-actively use charts in `render_dashboard` whenever numerical data, metrics, or comparisons are involved.
-- Python environment: **Mandatory** use of `./.venv/bin/python`. Always check for `.venv/` before running any command.
-- Python version pinned to 3.14 (`.python-version`)
-- Prefab dashboard rendering happens server-side, results cached in `_LAST_DASHBOARD_HTML`, served via `/dashboard`.
-- Extension window: launched via `chrome.windows.create()` on icon click (not side panel); window dims configurable.
+- Python environment: **use `./.venv/bin/python`** (Python 3.14 pinned in `.python-version`)
+- HuggingFace model cold-starts may download ~500MB; set `TRANSFORMERS_CACHE` to control location
+- Gemini tool binding is dynamic — `index.js` POSTs `tools/list` at init, converts to `functionDeclarations`
+- MCP session auto-recovery: retry on session loss, 20s timeout, up to 2 attempts with exponential backoff
+- Tool returns: uniform `dict` or `list[dict]`; errors return `[{"status": "..."}]`, never raise
+- DDGS backend chain retries primary (yahoo) 5× before falling back; `_ddgs_text_with_fallback()` handles this
+- Ollama provider: `geminiHistoryToOpenAI()` in `ollama-provider.js` converts Gemini-format history (role: `"model"`) to OpenAI format (role: `"assistant"`) including tool call ID mapping
+- Theme passed to dashboard via `?theme=dark|light`; backend injects `class="dark"` on `<html>` tag
+
+## Code Patterns
+
+**Backend:**
+- `@mcp.tool()` auto-exposes functions via `/mcp`; docstrings become Gemini function descriptions
+- `_normalize_chart(chart)` fixes common agent mistakes (wrong keys, missing type, flat labels/values) before `_build_chart_node()` converts to Prefab JSON
+- `layout="auto"` in `render_dashboard` picks effective layout from content shape: cards→`article_feed`, chart-only→`chart_focus`, table-only→`table_report`, else→`kpi_grid`
+
+**Frontend:**
+- Preset buttons inject canned prompts for common marketing intel queries
+- `conversationCheckpoints` stack enables undo without reload
+- `appendChatMessage()` for all UI updates
+
+**Tool Return Schemas:**
+- `fetch_brand_sentiment`: `[{brand, platform, total_posts, positive_pct, negative_pct, neutral_pct, sentiment_score, top_posts}]` or `[{brand, platform, status}]` on failure
+- `fetch_content_trends`: `[{city, tier, interest_score, related_queries, related_topics}]` or `[{status}]`
+- `fetch_search_presence`: `[{keyword, brand, rank, present, url, title, snippet, source_backend, top_results}]`
+- `render_dashboard`: `{"status": "dashboard_ready"}` (backend caches HTML)
 
 ## Project Layout
 
 ```
 intel-agent/
-├── main.py                    # FastMCP server + 3 tools + /dashboard route
-├── test_mcp_server.py         # Async Streamable-HTTP client test
-├── saved_articles.json        # Local article library (auto-created on first save)
-├── pyproject.toml             # Python deps (fastmcp, uvicorn, httpx, prefab-ui)
-├── uv.lock                    # Locked deps (managed by uv)
-├── .python-version            # Python 3.14 pin
+├── main.py                    # FastMCP server + 4 tools + /dashboard route
+├── test_mcp_server.py         # Self-contained integration tests (stdio transport)
+├── pyproject.toml             # deps: fastmcp, uvicorn, httpx, prefab-ui, ddgs, pytrends-modern, torch, transformers, python-dotenv
+├── .env                       # TWITTER_BEARER_TOKEN (gitignored)
 ├── graphify-out/              # Knowledge graph
 └── extension/
-    ├── manifest.json          # MV3 — permissions: storage; host: localhost:8000, googleapis.com, cdn.jsdelivr.net
-    ├── index.html             # Main UI (resizable chat + dashboard panels)
-    ├── index.js               # Gemini agentic loop + MCP proxy + Google Search + dashboard injection
-    ├── background.js          # Service worker — opens window on icon click
-    ├── options.html           # API key settings page
-    ├── options.js             # Save/load Gemini API key to chrome.storage.local
+    ├── manifest.json          # MV3 — host: localhost:8000, localhost:11434, googleapis.com
+    ├── index.html / index.js  # Main UI + agentic loop
+    ├── background.js          # Opens window on icon click
+    ├── options.html / options.js  # API key settings page
     ├── genai.js               # Bundled @google/genai ES module
-    └── icons/                 # Extension branding assets
+    └── providers/
+        ├── gemini-provider.js # Wraps @google/genai with googleSearch + forceFinish logic
+        └── ollama-provider.js # OpenAI-compatible client + Gemini→OpenAI history converter
 ```
-
-## Code Patterns
-
-**Backend (main.py):**
-- `@mcp.tool()` decorator registers async/sync functions as MCP tools auto-exposed via `/mcp` endpoint
-- Tool docstrings become Gemini function descriptions (critical for agents to understand usage)
-- `_load_library()` / `_save_library()` abstract JSON read/write
-- Theme system: Dashboard theme (dark/light) handled via route injection.
-- Fallback pattern: catch exception → return cached data + `{status: "..."}` sentinel (never raise to agent)
-- Tool execution logging emitted to stdout for debugging multi-tool agent routing
-
-**Tool Return Schemas:**
-- `fetch_tech_news`: `[{title, url, points}, ...]` or `[{status}, ...]` on fallback
-- `manage_local_library`: `{status, articles?}` dict
-- `render_dashboard`: `{"status": "dashboard_ready"}` dict (backend caches HTML)
-
-**Frontend (extension/index.js):**
-- Init: `mcpInitialize()` → `loadMcpTools()` → convert to Gemini `functionDeclarations` schema
-- Agentic loop: MAX_TURNS=12, forceFinish at turn 8 (constrains tools to `render_dashboard` only)
-  - generateContent → detect toolCalls → callMcpTool() → functionResponse → repeat
-  - Fallback: if no toolCalls + text response, render text-only dashboard
-  - System prompt enforces: always call `render_dashboard` when finished
-- Conversation history: tracked in-memory (full history), checkpoint stack for undo/clear without reload
-- Dashboard rendering: `render_dashboard` result triggers iframe reload with `?theme=...&t=...` (cache buster)
-- MCP session continuity: `mcp-session-id` header persisted; auto-recovery on session loss with retry logic + timeout
-- Gemini config: MCP `functionDeclarations` + native `googleSearch` tool registered together
-- Theme: dark/light toggle wired via `chrome.storage.local`, applied to extension UI and passed to dashboard iframe
-- UI Layout: dashboard panel (left) displays iframe; chat panel (right) shows conversation history + prompt input
-- Error state: if server unavailable, display "Server Disconnected" message (not silent failure)
-
-## UI/UX Patterns & Layout
-
-**Auto-Resizing Prompt Input:**
-- Textarea grows vertically as user types; height range: 40px min → 200px max
-- CSS: `resize: vertical; overflow-y: auto;` + JS `onInput` adjusts `style.height`
-- Prevents layout shift + keeps chat history visible while typing
-
-**Conversation Checkpoints:**
-- Undo button: revert to previous checkpoint (pops `conversationCheckpoints` stack)
-- Clear button: reset all history + checkpoints + dashboard
-- Checkpoints stored in-memory; lost on window close
-
-**Conversation History Display:**
-- Chat panel (right) logs all agent turns + user prompts.
-- History is maintained for the duration of the window session; checkpoint stack enables undo.
-- Use `appendChatMessage()` for UI updates.
-
-**Resizable Panels:**
-- `<div class="resizer">` between dashboard + chat divs enables horizontal resizing
-- Mouse drag updates `flex` basis of panels; stored in session state.
-- Stored in session state (not persisted across closes)
-
-**Dashboard Iframe Rendering:**
-- Right panel loads `http://localhost:8000/dashboard?theme={dark|light}&t={timestamp}`
-- Cache buster (`&t=...`) forces reload on new dashboard generation
-- Prefab HTML rendered server-side; iframe receives pre-built content
-- Theme parameter injected into HTML template server-side
-
-## Testing & Verification
-
-**Manual Server Test (Streamable-HTTP):**
-```bash
-# Terminal 1: Start backend
-./.venv/bin/python main.py
-
-# Terminal 2: Run connectivity test
-./.venv/bin/python test_mcp_server.py
-# Output: lists all 3 tools (fetch_tech_news, manage_local_library, render_dashboard)
-```
-
-**Integration Test (curl):**
-```bash
-# MCP tools/list
-curl -X POST http://localhost:8000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
-
-# MCP tools/call (fetch_tech_news)
-curl -X POST http://localhost:8000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-    "params": {
-      "name": "fetch_tech_news",
-      "arguments": {"query": "rust", "limit": 5}
-    }
-  }'
-```
-
-## Troubleshooting
-
-**"Connection refused" on test_mcp_server.py:**
-- Ensure `python main.py` is running in another terminal on port 8000
-- Check firewall: `lsof -i :8000` should show uvicorn listening
-
-**CORS errors in Chrome Extension:**
-- CORS middleware is configured with `allow_origins=["*"]` in main.py
-- Verify `mcp-protocol-version` and `mcp-session-id` headers in requests
-
-**saved_articles.json doesn't exist:**
-- It's auto-created on first `manage_local_library("save_new")` call
-- Safe to delete; system will regenerate it
 
 ## graphify
 

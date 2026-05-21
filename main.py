@@ -43,9 +43,8 @@ _TIER2_CITIES = {
 _BRAND_DOMAINS: dict[str, str] = {
     "pharmeasy": "pharmeasy.in",
     "1mg": "1mg.com",
-    "apollo": "apollopharmacy.in",
+    "apollo 247": "apollo247.com",
     "netmeds": "netmeds.com",
-    "hms": "hms.co.in",
 }
 
 _REDDIT_TIMEFRAME: dict[str, str] = {"d": "day", "w": "week", "m": "month"}
@@ -54,8 +53,8 @@ _REDDIT_TIMEFRAME: dict[str, str] = {"d": "day", "w": "week", "m": "month"}
 _TWITTER_BRAND_QUERY: dict[str, str] = {
     "pharmeasy": '"PharmEasy" OR "@pharmeasyapp"',
     "1mg": '"Tata 1mg" OR "@1mgIndia"',
-    "apollo": '"Apollo Pharmacy" OR "@ApolloPharmacy"',
-    "hms": '"HMS Health" OR "@hmshealth"',
+    "apollo 247": '"Apollo 247" OR "@Apollo247"',
+    "netmeds": '"Netmeds" OR "@netmeds"',
 }
 
 # Twitter API v2 — set TWITTER_BEARER_TOKEN env var to enable; falls back to DDGS if absent
@@ -193,7 +192,7 @@ async def fetch_brand_sentiment(
 ) -> list[dict]:
     """Fetch social media sentiment for pharma brands from Reddit, Twitter/X, and LinkedIn.
 
-    brands: list of brand names e.g. ["PharmEasy", "Tata 1mg", "Apollo", "HMS"]
+    brands: list of brand names e.g. ["PharmEasy", "Tata 1mg", "Apollo 247", "Netmeds"]
     platforms: list of platforms e.g. ["reddit", "twitter"] or a single string "reddit" | "twitter" | "linkedin" | "all"
     timeframe: "d" (day) | "w" (week, default) | "m" (month)
 
@@ -379,7 +378,7 @@ def fetch_search_presence(
 ) -> list[dict]:
     """Check where pharma brands appear in search results for given keywords.
 
-    brands: e.g. ["PharmEasy", "Tata 1mg", "Apollo", "HMS"]
+    brands: e.g. ["PharmEasy", "Tata 1mg", "Apollo 247", "Netmeds"]
     keywords: e.g. ["buy medicine online", "online pharmacy india", "order medicines"]
 
     Returns: [{keyword, brand, rank, present, url, title, snippet, source_backend, top_results}]

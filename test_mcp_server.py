@@ -165,7 +165,7 @@ async def test_brand_sentiment_structure():
 @pytest.mark.asyncio
 async def test_brand_sentiment_multiple_brands():
     data = _parse(await _call("fetch_brand_sentiment", {
-        "brands": ["PharmEasy", "Apollo"],
+        "brands": ["PharmEasy", "Apollo 247"],
         "platforms": ["reddit"],
         "timeframe": "w",
     }))
@@ -293,7 +293,7 @@ async def test_search_presence_structure():
 @pytest.mark.asyncio
 async def test_search_presence_multiple_brands_and_keywords():
     data = _parse(await _call("fetch_search_presence", {
-        "brands": ["PharmEasy", "Apollo"],
+        "brands": ["PharmEasy", "Apollo 247"],
         "keywords": ["online pharmacy india", "order medicines"],
     }))
     assert isinstance(data, list)

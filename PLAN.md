@@ -1,7 +1,7 @@
 # Marketing Intelligence Control Tower — Implementation Plan
 
 ## Goal
-Add social sentiment, content trend, and search presence tracking for pharma brands (PharmEasy, 1mg, Apollo, HMS) as a daily marketing control tower layered on top of the existing IntelAgent.
+Add social sentiment, content trend, and search presence tracking for pharma brands (PharmEasy, 1mg, Apollo, Netmeds) as a daily marketing control tower layered on top of the existing IntelAgent.
 
 ---
 
@@ -73,7 +73,7 @@ fetch_content_trends(
 ### Tool 3: `fetch_search_presence`
 ```
 fetch_search_presence(
-    brands: list[str],    # e.g. ["PharmEasy", "1mg", "Apollo", "HMS"]
+    brands: list[str],    # e.g. ["PharmEasy", "1mg", "Apollo", "Netmeds"]
     keywords: list[str]   # e.g. ["buy medicine online", "online pharmacy india"]
 ) -> list[dict]
 ```
@@ -81,7 +81,7 @@ fetch_search_presence(
 
 **Implementation:**
 - For each keyword: `ddgs.text(keyword, max_results=10)` → scan result `href` fields
-- Brand → domain map: `{"PharmEasy": "pharmeasy.in", "1mg": "1mg.com", "Apollo": "apollopharmacy.in", "HMS": "hms.co.in"}`
+- Brand → domain map: `{"PharmEasy": "pharmeasy.in", "1mg": "1mg.com", "Apollo": "apollopharmacy.in", "Netmeds": "Netmeds.co.in"}`
 - Find first result index where domain appears in URL → `rank` (1-indexed), `present=True`
 - If not found in top 10: `rank=None`, `present=False`
 - Fallback: ddgs failure → `[{status: "..."}]`
